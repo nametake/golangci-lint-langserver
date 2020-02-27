@@ -1,0 +1,20 @@
+---
+repos:
+  - repo: git@github.com:pre-commit/pre-commit-hooks.git
+    rev: v2.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: git@github.com:adrienverge/yamllint.git
+    rev: v1.20.0
+    hooks:
+      - id: yamllint
+  - repo: git@github.com:dnephin/pre-commit-golang.git
+    rev: v0.3.5
+    hooks:
+      - id: go-fmt
+      # - id: go-lint
+      - id: golangci-lint
+        args: [--enable-all]
