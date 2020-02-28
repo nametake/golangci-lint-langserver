@@ -13,6 +13,8 @@ func main() {
 
 	var connOpt []jsonrpc2.ConnOpt
 
+	log.Println("golangci-lint-langserver: connections opened")
+
 	<-jsonrpc2.NewConn(
 		context.Background(),
 		jsonrpc2.NewBufferedStream(stdrwc{}, jsonrpc2.VSCodeObjectCodec{}),
