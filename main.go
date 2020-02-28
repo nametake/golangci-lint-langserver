@@ -39,6 +39,5 @@ func (stdrwc) Close() error {
 	if err := os.Stdin.Close(); err != nil {
 		return err
 	}
-
 	return os.Stdout.Close()
 }
