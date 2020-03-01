@@ -30,6 +30,12 @@ func (h *langHandler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *json
 		return
 	case "shutdown":
 		return h.handleShutdown(ctx, conn, req)
+	case "textDocument/didOpen":
+		return h.handleDidOpen(ctx, conn, req)
+	case "textDocument/didClose":
+		return h.handleDidClose(ctx, conn, req)
+	case "textDocument/didChange":
+		return h.handleDidChange(ctx, conn, req)
 	}
 
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
@@ -51,5 +57,17 @@ func (h *langHandler) handleInitialize(_ context.Context, _ *jsonrpc2.Conn, req 
 }
 
 func (h *langHandler) handleShutdown(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	return nil, nil
+}
+
+func (h *langHandler) handleDidOpen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	return nil, nil
+}
+
+func (h *langHandler) handleDidClose(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	return nil, nil
+}
+
+func (h *langHandler) handleDidChange(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	return nil, nil
 }
