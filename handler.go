@@ -20,6 +20,10 @@ type langHandler struct {
 	rootURI string
 }
 
+// func (h langHandler) runCommand() {
+// 	exec.Command("golangci-lint", "run", "--enable-all", "--out-format", "json")
+// }
+
 func (h *langHandler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	h.logger.DebugJSON("golangci-lint-langserver: request:", req)
 
