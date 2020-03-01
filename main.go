@@ -2,18 +2,19 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
 
 func main() {
-	handler := NewHandler()
+	logger := newStdLogger(true)
+
+	handler := NewHandler(logger)
 
 	var connOpt []jsonrpc2.ConnOpt
 
-	log.Println("golangci-lint-langserver: connections opened")
+	logger.Printf("golangci-lint-langserver: connections opened")
 
 	<-jsonrpc2.NewConn(
 		context.Background(),
@@ -22,7 +23,7 @@ func main() {
 		connOpt...,
 	).DisconnectNotify()
 
-	log.Println("golangci-lint-langserver: connections closed")
+	logger.Printf("golangci-lint-langserver: connections closed")
 }
 
 type stdrwc struct{}
