@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -15,6 +16,7 @@ func NewHandler(logger logger) jsonrpc2.Handler {
 		request: make(chan DocumentURI),
 	}
 	go handler.linter()
+
 	return jsonrpc2.HandlerWithError(handler.handle)
 }
 
@@ -45,7 +47,28 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
 
-	return nil, nil
+	diagnostics := make([]Diagnostic, 0)
+	for _, issue := range result.Issues {
+		issue := issue
+
+		if !strings.HasSuffix(string(uri), issue.Pos.Filename) {
+			continue
+		}
+
+		//nolint:gomnd
+		d := Diagnostic{
+			Range: Range{
+				Start: Position{Line: issue.Pos.Line - 1, Character: issue.Pos.Column - 1},
+				End:   Position{Line: issue.Pos.Line - 1, Character: issue.Pos.Column - 1},
+			},
+			Severity: 1,
+			Source:   &issue.FromLinter,
+			Message:  issue.Text,
+		}
+		diagnostics = append(diagnostics, d)
+	}
+
+	return diagnostics, nil
 }
 
 func (h *langHandler) linter() {
@@ -54,16 +77,20 @@ func (h *langHandler) linter() {
 		if !ok {
 			break
 		}
+
 		diagnostics, err := h.lint(uri)
 		if err != nil {
 			h.logger.Printf("%s", err)
 			continue
 		}
+
+		h.logger.DebugJSON("hoge:", diagnostics)
+
 		if err := h.conn.Notify(
 			context.Background(),
 			"textDocument/publishDiagnostics",
 			&PublishDiagnosticsParams{
-				URI:         "",
+				URI:         uri,
 				Diagnostics: diagnostics,
 			}); err != nil {
 			h.logger.Printf("%s", err)
