@@ -1,5 +1,7 @@
 package main
 
+type DocumentURI string
+
 type InitializeParams struct {
 	RootURI string `json:"rootUri,omitempty"`
 }
@@ -30,6 +32,26 @@ type ServerCapabilities struct {
 	DocumentFormattingProvider bool                 `json:"documentFormattingProvider,omitempty"`
 	HoverProvider              bool                 `json:"hoverProvider,omitempty"`
 	CodeActionProvider         bool                 `json:"codeActionProvider,omitempty"`
+}
+
+type TextDocumentItem struct {
+	URI        DocumentURI `json:"uri"`
+	LanguageID string      `json:"languageId"`
+	Version    int         `json:"version"`
+	Text       string      `json:"text"`
+}
+
+type TextDocumentIdentifier struct {
+	URI DocumentURI `json:"uri"`
+}
+
+type DidOpenTextDocumentParams struct {
+	TextDocument TextDocumentItem `json:"textDocument"`
+}
+
+type DidSaveTextDocumentParams struct {
+	Text         *string                `json:"text"`
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
 }
 
 type Location struct {
