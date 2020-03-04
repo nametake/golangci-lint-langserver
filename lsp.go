@@ -31,3 +31,37 @@ type ServerCapabilities struct {
 	HoverProvider              bool                 `json:"hoverProvider,omitempty"`
 	CodeActionProvider         bool                 `json:"codeActionProvider,omitempty"`
 }
+
+type Location struct {
+	URI   string `json:"uri"`
+	Range Range  `json:"range"`
+}
+
+type Range struct {
+	Start Position `json:"start"`
+	End   Position `json:"end"`
+}
+
+type Position struct {
+	Line      int `json:"line"`
+	Character int `json:"character"`
+}
+
+type DiagnosticRelatedInformation struct {
+	Location Location `json:"location"`
+	Message  string   `json:"message"`
+}
+
+type Diagnostic struct {
+	Range              Range                          `json:"range"`
+	Severity           int                            `json:"severity,omitempty"`
+	Code               *string                        `json:"code,omitempty"`
+	Source             *string                        `json:"source,omitempty"`
+	Message            string                         `json:"message"`
+	RelatedInformation []DiagnosticRelatedInformation `json:"relatedInformation,omitempty"`
+}
+
+type PublishDiagnosticsParams struct {
+	URI         string       `json:"uri"`
+	Diagnostics []Diagnostic `json:"diagnostics"`
+}
