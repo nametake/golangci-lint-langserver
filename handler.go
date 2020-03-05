@@ -60,7 +60,7 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 				Start: Position{Line: issue.Pos.Line - 1, Character: issue.Pos.Column - 1},
 				End:   Position{Line: issue.Pos.Line - 1, Character: issue.Pos.Column - 1},
 			},
-			Severity: 1,
+			Severity: DSWarning,
 			Source:   &issue.FromLinter,
 			Message:  issue.Text,
 		}

@@ -79,9 +79,19 @@ type DiagnosticRelatedInformation struct {
 	Message  string   `json:"message"`
 }
 
+type DiagnosticSeverity int
+
+//nolint:unused,deadcode
+const (
+	DSError DiagnosticSeverity = iota + 1
+	DSWarning
+	DSInformation
+	DSHint
+)
+
 type Diagnostic struct {
 	Range              Range                          `json:"range"`
-	Severity           int                            `json:"severity,omitempty"`
+	Severity           DiagnosticSeverity             `json:"severity,omitempty"`
 	Code               *string                        `json:"code,omitempty"`
 	Source             *string                        `json:"source,omitempty"`
 	Message            string                         `json:"message"`
