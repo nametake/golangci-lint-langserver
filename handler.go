@@ -33,7 +33,9 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	h.logger.Printf("golangci-lint-langserver: uri: %s", uri)
 
 	cmd := exec.Command("golangci-lint", "run", "--enable-all", "--out-format", "json")
+
 	b, err := cmd.CombinedOutput()
+
 	if err == nil {
 		return nil, nil
 	}
@@ -48,6 +50,7 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
 
 	diagnostics := make([]Diagnostic, 0)
+
 	for _, issue := range result.Issues {
 		issue := issue
 
