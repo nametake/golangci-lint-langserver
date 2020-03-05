@@ -2,13 +2,20 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
 
 func main() {
-	logger := newStdLogger(true)
+	var (
+		debug = flag.Bool("debug", false, "show debug log")
+	)
+
+	flag.Parse()
+
+	logger := newStdLogger(*debug)
 
 	handler := NewHandler(logger)
 
