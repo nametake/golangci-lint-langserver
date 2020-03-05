@@ -30,18 +30,13 @@ type langHandler struct {
 }
 
 func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
-	h.logger.Printf("golangci-lint-langserver: uri: %s", uri)
-
 	//nolint:gosec
 	cmd := exec.Command(h.command[0], h.command[1:]...)
 
 	b, err := cmd.CombinedOutput()
-
 	if err == nil {
 		return nil, nil
 	}
-
-	h.logger.Printf("%v", b)
 
 	var result GolangCILintResult
 	if err := json.Unmarshal(b, &result); err != nil {
