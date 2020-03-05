@@ -28,7 +28,6 @@ type langHandler struct {
 	rootURI string
 }
 
-//nolint:unparam
 func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	h.logger.Printf("golangci-lint-langserver: uri: %s", uri)
 
@@ -86,8 +85,6 @@ func (h *langHandler) linter() {
 			h.logger.Printf("%s", err)
 			continue
 		}
-
-		h.logger.DebugJSON("hoge:", diagnostics)
 
 		if err := h.conn.Notify(
 			context.Background(),
