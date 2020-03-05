@@ -3,7 +3,12 @@ package main
 type DocumentURI string
 
 type InitializeParams struct {
-	RootURI string `json:"rootUri,omitempty"`
+	RootURI               string                `json:"rootUri,omitempty"`
+	InitializationOptions InitializationOptions `json:"initializationOptions,omitempty"`
+}
+
+type InitializationOptions struct {
+	Command []string
 }
 
 type InitializeResult struct {

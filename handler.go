@@ -24,6 +24,7 @@ type langHandler struct {
 	logger  logger
 	conn    *jsonrpc2.Conn
 	request chan DocumentURI
+	command []string
 
 	rootURI string
 }
@@ -31,7 +32,8 @@ type langHandler struct {
 func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	h.logger.Printf("golangci-lint-langserver: uri: %s", uri)
 
-	cmd := exec.Command("golangci-lint", "run", "--enable-all", "--out-format", "json")
+	//nolint:gosec
+	cmd := exec.Command(h.command[0], h.command[1:]...)
 
 	b, err := cmd.CombinedOutput()
 
@@ -129,6 +131,7 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 
 	h.rootURI = params.RootURI
 	h.conn = conn
+	h.command = params.InitializationOptions.Command
 
 	return InitializeResult{
 		Capabilities: ServerCapabilities{
