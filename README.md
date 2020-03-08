@@ -2,7 +2,14 @@
 
 golangci-lint-langserver is [golangci-lint](https://github.com/golangci/golangci-lint) language server.
 
-![demo](https://raw.github.com/wiki/nametake/golangci-lint-langserver/img/demo.gif)
+[![asciicast](https://asciinema.org/a/308369.svg)](https://asciinema.org/a/308369)
+
+
+## Installation
+
+```console
+go get github.com/nametake/golangci-lint-langserver
+```
 
 ## Configuration
 
