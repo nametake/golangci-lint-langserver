@@ -6,9 +6,7 @@ import (
 	"os"
 )
 
-var (
-	_ logger = (*stdLogger)(nil)
-)
+var _ logger = (*stdLogger)(nil)
 
 type logger interface {
 	Printf(format string, args ...interface{})
