@@ -9,9 +9,7 @@ import (
 )
 
 func main() {
-	var (
-		debug = flag.Bool("debug", false, "show debug log")
-	)
+	debug := flag.Bool("debug", false, "show debug log")
 
 	flag.Parse()
 
@@ -47,5 +45,6 @@ func (stdrwc) Close() error {
 	if err := os.Stdin.Close(); err != nil {
 		return err
 	}
+
 	return os.Stdout.Close()
 }

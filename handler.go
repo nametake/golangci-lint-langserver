@@ -50,7 +50,7 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	for _, issue := range result.Issues {
 		issue := issue
 
-		if !strings.HasSuffix(string(uri), issue.Pos.Filename) {
+		if strings.TrimPrefix(string(uri), h.rootURI+"/") != issue.Pos.Filename {
 			continue
 		}
 
@@ -80,6 +80,7 @@ func (h *langHandler) linter() {
 		diagnostics, err := h.lint(uri)
 		if err != nil {
 			h.logger.Printf("%s", err)
+
 			continue
 		}
 
@@ -137,6 +138,7 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 
 func (h *langHandler) handleShutdown(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (result interface{}, err error) {
 	close(h.request)
+
 	return nil, nil
 }
 
