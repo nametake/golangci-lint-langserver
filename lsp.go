@@ -29,14 +29,22 @@ type CompletionProvider struct {
 	TriggerCharacters []string `json:"triggerCharacters"`
 }
 
+type TextDocumentSyncOptions struct {
+	OpenClose         bool                 `json:"openClose,omitempty"`
+	Change            TextDocumentSyncKind `json:"change,omitempty"`
+	WillSave          bool                 `json:"willSave,omitempty"`
+	WillSaveWaitUntil bool                 `json:"willSaveWaitUntil,omitempty"`
+	Save              bool                 `json:"save,omitempty"`
+}
+
 type ServerCapabilities struct {
-	TextDocumentSync           TextDocumentSyncKind `json:"textDocumentSync,omitempty"`
-	CompletionProvider         *CompletionProvider  `json:"completionProvider,omitempty"`
-	DocumentSymbolProvider     bool                 `json:"documentSymbolProvider,omitempty"`
-	DefinitionProvider         bool                 `json:"definitionProvider,omitempty"`
-	DocumentFormattingProvider bool                 `json:"documentFormattingProvider,omitempty"`
-	HoverProvider              bool                 `json:"hoverProvider,omitempty"`
-	CodeActionProvider         bool                 `json:"codeActionProvider,omitempty"`
+	TextDocumentSync           TextDocumentSyncOptions `json:"textDocumentSync,omitempty"`
+	CompletionProvider         *CompletionProvider     `json:"completionProvider,omitempty"`
+	DocumentSymbolProvider     bool                    `json:"documentSymbolProvider,omitempty"`
+	DefinitionProvider         bool                    `json:"definitionProvider,omitempty"`
+	DocumentFormattingProvider bool                    `json:"documentFormattingProvider,omitempty"`
+	HoverProvider              bool                    `json:"hoverProvider,omitempty"`
+	CodeActionProvider         bool                    `json:"codeActionProvider,omitempty"`
 }
 
 type TextDocumentItem struct {
