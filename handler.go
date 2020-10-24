@@ -131,7 +131,11 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 
 	return InitializeResult{
 		Capabilities: ServerCapabilities{
-			TextDocumentSync: TDSKFull,
+			TextDocumentSync: TextDocumentSyncOptions{
+				Change:    TDSKNone,
+				OpenClose: true,
+				Save:      true,
+			},
 		},
 	}, nil
 }
