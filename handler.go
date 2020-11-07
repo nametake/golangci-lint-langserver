@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strings"
+	"path/filepath"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -32,8 +32,12 @@ type langHandler struct {
 func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	diagnostics := make([]Diagnostic, 0)
 
+	path := uriToPath(string(uri))
+	dir, file := filepath.Split(path)
+
 	//nolint:gosec
 	cmd := exec.Command(h.command[0], h.command[1:]...)
+	cmd.Dir = dir
 
 	b, err := cmd.CombinedOutput()
 	if err == nil {
@@ -50,7 +54,7 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	for _, issue := range result.Issues {
 		issue := issue
 
-		if strings.TrimPrefix(string(uri), h.rootURI+"/") != issue.Pos.Filename {
+		if file != issue.Pos.Filename {
 			continue
 		}
 
