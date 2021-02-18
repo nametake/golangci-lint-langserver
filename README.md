@@ -48,3 +48,27 @@ augroup END
 ```
 
 [vim-lsp-settings](https://github.com/mattn/vim-lsp-settings) provide installer for golangci-lint-langserver.
+
+### Configuration for [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig)
+
+**Requires [Neovim HEAD/nightly](https://github.com/neovim/neovim/releases/tag/nightly) (v0.5 prerelease).**
+
+```lua
+local lspconfig = require 'lspconfig'
+local configs = require 'lspconfig/configs'
+
+if not lspconfig.golangcilsp then
+ 	configs.golangcilsp = {
+		default_config = {
+			cmd = {'golangci-lint-langserver'},
+			root_dir = lspconfig.util.root_pattern('.git', 'go.mod'),
+			init_options = {
+					command = { "golangci-lint", "run", "--enable-all", "--disable", "lll", "--out-format", "json" };
+			}
+		};
+	}
+end
+lspconfig.golangcilsp.setup {
+	filetypes = {'go'}
+}
+```
