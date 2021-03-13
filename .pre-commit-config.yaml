@@ -17,4 +17,3 @@ repos:
       - id: go-fmt
       # - id: go-lint
       - id: golangci-lint
-        args: [--enable-all, --disable, 'lll,wsl']

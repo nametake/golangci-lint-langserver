@@ -39,7 +39,7 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	cmd := exec.Command(h.command[0], h.command[1:]...)
 	cmd.Dir = dir
 
-	b, err := cmd.CombinedOutput()
+	b, err := cmd.Output()
 	if err == nil {
 		return diagnostics, nil
 	}
