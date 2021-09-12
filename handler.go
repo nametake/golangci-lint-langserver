@@ -10,10 +10,11 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func NewHandler(logger logger) jsonrpc2.Handler {
+func NewHandler(logger logger, noLinterName bool) jsonrpc2.Handler {
 	handler := &langHandler{
-		logger:  logger,
-		request: make(chan DocumentURI),
+		logger:       logger,
+		request:      make(chan DocumentURI),
+		noLinterName: noLinterName,
 	}
 	go handler.linter()
 
@@ -21,10 +22,11 @@ func NewHandler(logger logger) jsonrpc2.Handler {
 }
 
 type langHandler struct {
-	logger  logger
-	conn    *jsonrpc2.Conn
-	request chan DocumentURI
-	command []string
+	logger       logger
+	conn         *jsonrpc2.Conn
+	request      chan DocumentURI
+	command      []string
+	noLinterName bool
 
 	rootURI string
 }
@@ -66,12 +68,20 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 			},
 			Severity: DSWarning,
 			Source:   &issue.FromLinter,
-			Message:  issue.Text,
+			Message:  h.diagnosticMessage(&issue),
 		}
 		diagnostics = append(diagnostics, d)
 	}
 
 	return diagnostics, nil
+}
+
+func (h *langHandler) diagnosticMessage(issue *Issue) string {
+	if h.noLinterName {
+		return issue.Text
+	}
+
+	return fmt.Sprintf("%s: %s", issue.FromLinter, issue.Text)
 }
 
 func (h *langHandler) linter() {
