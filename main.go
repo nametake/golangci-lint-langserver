@@ -9,13 +9,14 @@ import (
 )
 
 func main() {
-	debug := flag.Bool("debug", false, "show debug log")
+	debug := flag.Bool("debug", false, "output debug log")
+	noLinterName := flag.Bool("nolintername", false, "don't show a linter name in message")
 
 	flag.Parse()
 
 	logger := newStdLogger(*debug)
 
-	handler := NewHandler(logger)
+	handler := NewHandler(logger, *noLinterName)
 
 	var connOpt []jsonrpc2.ConnOpt
 

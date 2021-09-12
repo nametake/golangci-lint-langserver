@@ -11,6 +11,15 @@ golangci-lint-langserver is [golangci-lint](https://github.com/golangci/golangci
 go get github.com/nametake/golangci-lint-langserver
 ```
 
+## Options
+
+```console
+  -debug
+        output debug log
+  -nolintername
+        don't show a linter name in message
+```
+
 ## Configuration
 
 You need to set golangci-lint command to initializationOptions with `--out-format json`.
