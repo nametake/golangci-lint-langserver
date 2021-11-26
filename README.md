@@ -81,3 +81,27 @@ lspconfig.golangcilsp.setup {
 	filetypes = {'go'}
 }
 ```
+
+### Configuration for [lsp-mode](https://github.com/emacs-lsp/lsp-mode) (Emacs)
+
+```emacs-lisp
+(with-eval-after-load 'lsp-mode
+  (lsp-register-custom-settings
+   '(("golangci-lint.command"
+      ["golangci-lint" "run" "--enable-all" "--disable" "lll" "--out-format" "json"])))
+
+  (lsp-register-client
+   (make-lsp-client :new-connection (lsp-stdio-connection
+                                     '("golangci-lint-langserver"))
+                    :major-modes '(go-mode)
+                    :language-id "go"
+                    :priority 0
+                    :server-id 'golangci-lint
+                    :add-on? t
+                    :library-folders-fn #'lsp-go--library-default-directories
+                    :initialization-options (lambda ()
+                                              (gethash "golangci-lint"
+                                                       (lsp-configuration-section "golangci-lint")))))
+
+  (add-to-list 'lsp-language-id-configuration '(go-mode . "golangci-lint")))
+```
