@@ -7,6 +7,8 @@ golangci-lint-langserver is [golangci-lint](https://github.com/golangci/golangci
 
 ## Installation
 
+Install [golangci-lint](https://golangci-lint.run).
+
 ```console
 go get github.com/nametake/golangci-lint-langserver
 ```
