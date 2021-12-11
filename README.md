@@ -66,7 +66,7 @@ augroup END
 local lspconfig = require 'lspconfig'
 local configs = require 'lspconfig/configs'
 
-if not lspconfig.golangcilsp then
+if not configs.golangcilsp then
  	configs.golangcilsp = {
 		default_config = {
 			cmd = {'golangci-lint-langserver'},
