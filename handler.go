@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -27,28 +29,28 @@ type langHandler struct {
 	request      chan DocumentURI
 	command      []string
 	noLinterName bool
+	showAll      bool
 
 	rootURI string
 }
 
-func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
-	diagnostics := make([]Diagnostic, 0)
+func (h *langHandler) lint(uri DocumentURI) (map[string][]Diagnostic, error) {
+	diagnostics := make(map[string][]Diagnostic, 0)
 
-	path := uriToPath(string(uri))
-	dir, file := filepath.Split(path)
+	file := strings.TrimPrefix(string(uri), h.rootURI+string(os.PathSeparator))
 
 	//nolint:gosec
 	cmd := exec.Command(h.command[0], h.command[1:]...)
-	cmd.Dir = dir
+	cmd.Dir = uriToPath(h.rootURI)
 
 	b, err := cmd.Output()
 	if err == nil {
-		return diagnostics, nil
+		return nil, nil
 	}
 
 	var result GolangCILintResult
 	if err := json.Unmarshal(b, &result); err != nil {
-		return diagnostics, err
+		return nil, err
 	}
 
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
@@ -56,9 +58,11 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	for _, issue := range result.Issues {
 		issue := issue
 
-		if file != issue.Pos.Filename {
+		if !h.showAll && file != issue.Pos.Filename {
 			continue
 		}
+
+		uri := filepath.Join(h.rootURI, issue.Pos.Filename)
 
 		//nolint:gomnd
 		d := Diagnostic{
@@ -70,7 +74,12 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 			Source:   &issue.FromLinter,
 			Message:  h.diagnosticMessage(&issue),
 		}
-		diagnostics = append(diagnostics, d)
+
+		if _, ok := diagnostics[uri]; !ok {
+			diagnostics[uri] = []Diagnostic{d}
+		} else {
+			diagnostics[uri] = append(diagnostics[uri], d)
+		}
 	}
 
 	return diagnostics, nil
@@ -91,21 +100,24 @@ func (h *langHandler) linter() {
 			break
 		}
 
-		diagnostics, err := h.lint(uri)
+		diagnosticsMap, err := h.lint(uri)
 		if err != nil {
 			h.logger.Printf("%s", err)
 
 			continue
 		}
 
-		if err := h.conn.Notify(
-			context.Background(),
-			"textDocument/publishDiagnostics",
-			&PublishDiagnosticsParams{
-				URI:         uri,
-				Diagnostics: diagnostics,
-			}); err != nil {
-			h.logger.Printf("%s", err)
+		for uri, diagnostics := range diagnosticsMap {
+			if err := h.conn.Notify(
+				context.Background(),
+				"textDocument/publishDiagnostics",
+				&PublishDiagnosticsParams{
+					URI:         DocumentURI(uri),
+					Diagnostics: diagnostics,
+				},
+			); err != nil {
+				h.logger.Printf("%s", err)
+			}
 		}
 	}
 }
@@ -141,7 +153,12 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 
 	h.rootURI = params.RootURI
 	h.conn = conn
+	h.showAll = params.InitializationOptions.ShowAll
 	h.command = params.InitializationOptions.Command
+	// default command if none is specified
+	if len(h.command) == 0 {
+		h.command = []string{"golangci-lint", "run", "--out-format", "json"}
+	}
 
 	return InitializeResult{
 		Capabilities: ServerCapabilities{
