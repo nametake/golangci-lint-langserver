@@ -62,7 +62,7 @@ augroup END
 
 ### Configuration for [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig)
 
-**Requires [Neovim HEAD/nightly](https://github.com/neovim/neovim/releases/tag/nightly) (v0.5 prerelease).**
+**Requires Neovim [v0.6.1](https://github.com/neovim/neovim/releases/tag/v0.6.1) or [nightly](https://github.com/neovim/neovim/releases/tag/nightly).**
 
 ```lua
 local lspconfig = require 'lspconfig'
@@ -79,8 +79,8 @@ if not configs.golangcilsp then
 		};
 	}
 end
-lspconfig.golangcilsp.setup {
-	filetypes = {'go'}
+lspconfig.golangci_lint_ls.setup {
+	filetypes = {'go','gomod'}
 }
 ```
 
