@@ -128,6 +128,8 @@ func (h *langHandler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *json
 		return h.handleTextDocumentDidChange(ctx, conn, req)
 	case "textDocument/didSave":
 		return h.handleTextDocumentDidSave(ctx, conn, req)
+	case "workspace/didChangeConfiguration":
+		return h.handlerWorkspaceDidChangeConfiguration(ctx, conn, req)
 	}
 
 	return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeMethodNotFound, Message: fmt.Sprintf("method not supported: %s", req.Method)}
@@ -187,5 +189,9 @@ func (h *langHandler) handleTextDocumentDidSave(_ context.Context, _ *jsonrpc2.C
 
 	h.request <- params.TextDocument.URI
 
+	return nil, nil
+}
+
+func (h *langHandler) handlerWorkspaceDidChangeConfiguration(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
 	return nil, nil
 }
