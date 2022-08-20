@@ -37,7 +37,7 @@ coc-settings.json
       "command": "golangci-lint-langserver",
       "filetypes": ["go"],
       "initializationOptions": {
-        "command": ["golangci-lint", "run", "--enable-all", "--disable", "lll", "--out-format", "json"]
+        "command": ["golangci-lint", "run", "--enable-all", "--disable", "lll", "--out-format", "json", "--issues-exit-code=1"]
       }
     }
   }
@@ -52,7 +52,7 @@ augroup vim_lsp_golangci_lint_langserver
   autocmd User lsp_setup call lsp#register_server({
       \ 'name': 'golangci-lint-langserver',
       \ 'cmd': {server_info->['golangci-lint-langserver']},
-      \ 'initialization_options': {'command': ['golangci-lint', 'run', '--enable-all', '--disable', 'lll', '--out-format', 'json']},
+      \ 'initialization_options': {'command': ['golangci-lint', 'run', '--enable-all', '--disable', 'lll', '--out-format', 'json', '--issues-exit-code=1']},
       \ 'whitelist': ['go'],
       \ })
 augroup END
@@ -74,7 +74,7 @@ if not configs.golangcilsp then
 			cmd = {'golangci-lint-langserver'},
 			root_dir = lspconfig.util.root_pattern('.git', 'go.mod'),
 			init_options = {
-					command = { "golangci-lint", "run", "--enable-all", "--disable", "lll", "--out-format", "json" };
+					command = { "golangci-lint", "run", "--enable-all", "--disable", "lll", "--out-format", "json", "--issues-exit-code=1" };
 			}
 		};
 	}
@@ -90,7 +90,7 @@ lspconfig.golangci_lint_ls.setup {
 (with-eval-after-load 'lsp-mode
   (lsp-register-custom-settings
    '(("golangci-lint.command"
-      ["golangci-lint" "run" "--enable-all" "--disable" "lll" "--out-format" "json"])))
+      ["golangci-lint" "run" "--enable-all" "--disable" "lll" "--out-format" "json" "--issues-exit-code=1"])))
 
   (lsp-register-client
    (make-lsp-client :new-connection (lsp-stdio-connection
