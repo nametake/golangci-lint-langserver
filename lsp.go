@@ -8,7 +8,8 @@ type InitializeParams struct {
 }
 
 type InitializationOptions struct {
-	Command []string
+	Command []string `json:"command,omitempty"`
+	ShowAll bool     `json:"show_all,omitempty"`
 }
 
 type InitializeResult struct {
