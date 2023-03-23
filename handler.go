@@ -10,11 +10,12 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func NewHandler(logger logger, noLinterName bool) jsonrpc2.Handler {
+func NewHandler(logger logger, noLinterName bool, fromConfigDir bool) jsonrpc2.Handler {
 	handler := &langHandler{
-		logger:       logger,
-		request:      make(chan DocumentURI),
-		noLinterName: noLinterName,
+		logger:        logger,
+		request:       make(chan DocumentURI),
+		noLinterName:  noLinterName,
+		fromConfigDir: fromConfigDir,
 	}
 	go handler.linter()
 
@@ -22,32 +23,104 @@ func NewHandler(logger logger, noLinterName bool) jsonrpc2.Handler {
 }
 
 type langHandler struct {
-	logger       logger
-	conn         *jsonrpc2.Conn
-	request      chan DocumentURI
-	command      []string
-	noLinterName bool
+	logger        logger
+	conn          *jsonrpc2.Conn
+	request       chan DocumentURI
+	command       []string
+	noLinterName  bool
+	fromConfigDir bool
 
 	rootURI string
 }
 
-func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
-	diagnostics := make([]Diagnostic, 0)
+func (h *langHandler) findConfigDirectory(file string) (string, error) {
+	dir, _ := filepath.Split(file)
 
-	path := uriToPath(string(uri))
-	dir, file := filepath.Split(path)
+	// Maybe this should be configurable too?
+	findConfigCmd := exec.Command(h.command[0], "config", "path")
+	findConfigCmd.Dir = dir
 
+	configFile, err := findConfigCmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	configDirRel, _ := filepath.Split(string(configFile))
+
+	// configFileBytes is relative to dir, we need to make it absolute
+	//
+	// This assumes that `dir` is absolute
+	return filepath.Join(dir, configDirRel), nil
+}
+
+func (h *langHandler) runLinter(dir string) (GolangCILintResult, error) {
 	//nolint:gosec
 	cmd := exec.Command(h.command[0], h.command[1:]...)
-	cmd.Dir = dir
+
+	// linter might be ran either from the directory of the file or from the directory of the config file
+	var checkDir string
+	if h.fromConfigDir {
+		// Relative paths in .golangci-lint.yml work, but
+		// - we need to find the directory with config
+		// - we have to adjust the paths in the result
+
+		configDir, err := h.findConfigDirectory(dir)
+		if err != nil {
+			return GolangCILintResult{}, err
+		}
+
+		h.logger.Printf("Found golangci-lint config file in directory %s", configDir)
+
+		// Find the original directory, relative to the config dir
+		checkDir, err = filepath.Rel(configDir, dir)
+		if err != nil {
+			return GolangCILintResult{}, err
+		}
+
+		// This runs the linter on the subtree. Non-config-dir option does not
+		// pass any packages to the command line, which is equivalent.
+		cmd.Args = append(cmd.Args, checkDir+"/...")
+		cmd.Dir = configDir
+	} else {
+		// Relative paths in golangci-lint.yml don't work, but the paths in report are correct,
+		// and no additional work is needed
+		cmd.Dir = dir
+	}
 
 	b, err := cmd.Output()
-	if err == nil {
-		return diagnostics, nil
+	if err == nil { // This expects that the golangci-lint exits with non-zero code on errors
+		return GolangCILintResult{}, nil
 	}
 
 	var result GolangCILintResult
 	if err := json.Unmarshal(b, &result); err != nil {
+		return GolangCILintResult{}, err
+	}
+
+	// We need to adjust the paths in the result (see above)
+	if h.fromConfigDir {
+		var issues []Issue
+		for _, issue := range result.Issues {
+			// Strip checkDir from the path
+			issue.Pos.Filename, err = filepath.Rel(checkDir, issue.Pos.Filename)
+			if err != nil {
+				return GolangCILintResult{}, err
+			}
+			issues = append(issues, issue)
+		}
+		result.Issues = issues
+	}
+
+	return result, nil
+}
+
+func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
+	dir, file := filepath.Split(uriToPath(string(uri)))
+
+	diagnostics := make([]Diagnostic, 0)
+
+	result, err := h.runLinter(dir)
+	if err != nil {
 		return diagnostics, err
 	}
 
