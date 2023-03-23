@@ -20,7 +20,17 @@ go install github.com/nametake/golangci-lint-langserver@latest
         output debug log
   -nolintername
         don't show a linter name in message
+  -from-config-dir
+        run linter from .golangci-lint.yml directory
 ```
+
+## Options
+
+`-from-config-dir` makes the `golangci-lint` run from the directory with configuration file.
+This makes relative paths in the configuration path work at the cost of small slowdown.
+
+Use this option if your `.golangci-lint.yml` file contains relative paths or if `golangci-lint`
+[refuses to run from a subdirectory of a project due to some other reason](https://github.com/golangci/golangci-lint/issues/3717).
 
 ## Configuration
 

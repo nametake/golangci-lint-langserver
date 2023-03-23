@@ -13,13 +13,14 @@ var defaultSeverity = "Warn"
 func main() {
 	debug := flag.Bool("debug", false, "output debug log")
 	noLinterName := flag.Bool("nolintername", false, "don't show a linter name in message")
+	fromConfigDir := flag.Bool("from-config-dir", false, "run linter from .golangci-lint.yml directory")
 	flag.StringVar(&defaultSeverity, "severity", defaultSeverity, "Default severity to use. Choices are: Err(or), Warn(ing), Info(rmation) or Hint")
 
 	flag.Parse()
 
 	logger := newStdLogger(*debug)
 
-	handler := NewHandler(logger, *noLinterName)
+	handler := NewHandler(logger, *noLinterName, *fromConfigDir)
 
 	var connOpt []jsonrpc2.ConnOpt
 
