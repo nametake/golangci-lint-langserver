@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -29,6 +30,21 @@ type langHandler struct {
 	noLinterName bool
 
 	rootURI string
+	rootDir string
+}
+
+func (h *langHandler) errToDiagnostics(err error) []Diagnostic {
+	var message string
+	switch e := err.(type) {
+	case *exec.ExitError:
+		message = string(e.Stderr)
+	default:
+		h.logger.DebugJSON("golangci-lint-langserver: errToDiagnostics message", message)
+		message = e.Error()
+	}
+	return []Diagnostic{
+		{Severity: DSError, Message: message},
+	}
 }
 
 func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
@@ -37,18 +53,31 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	path := uriToPath(string(uri))
 	dir, file := filepath.Split(path)
 
+	args := make([]string, 0, len(h.command))
+	args = append(args, h.command[1:]...)
+	args = append(args, dir)
 	//nolint:gosec
-	cmd := exec.Command(h.command[0], h.command[1:]...)
-	cmd.Dir = dir
+	cmd := exec.Command(h.command[0], args...)
+	if strings.HasPrefix(path, h.rootDir) {
+		cmd.Dir = h.rootDir
+		file = path[len(h.rootDir)+1:]
+	} else {
+		cmd.Dir = dir
+	}
+	h.logger.DebugJSON("golangci-lint-langserver: golingci-lint cmd", cmd)
 
 	b, err := cmd.Output()
 	if err == nil {
 		return diagnostics, nil
+	} else if len(b) == 0 {
+		// golangci-lint would output critical error to stderr rather than stdout
+		// https://github.com/nametake/golangci-lint-langserver/issues/24
+		return h.errToDiagnostics(err), nil
 	}
 
 	var result GolangCILintResult
 	if err := json.Unmarshal(b, &result); err != nil {
-		return diagnostics, err
+		return h.errToDiagnostics(err), nil
 	}
 
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
@@ -141,6 +170,7 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 	}
 
 	h.rootURI = params.RootURI
+	h.rootDir = uriToPath(params.RootURI)
 	h.conn = conn
 	h.command = params.InitializationOptions.Command
 
