@@ -95,7 +95,7 @@ lspconfig.golangci_lint_ls.setup {
   (lsp-register-client
    (make-lsp-client :new-connection (lsp-stdio-connection
                                      '("golangci-lint-langserver"))
-                    :major-modes '(go-mode)
+                    :activation-fn (lsp-activate-on "go")
                     :language-id "go"
                     :priority 0
                     :server-id 'golangci-lint
@@ -104,6 +104,4 @@ lspconfig.golangci_lint_ls.setup {
                     :initialization-options (lambda ()
                                               (gethash "golangci-lint"
                                                        (lsp-configuration-section "golangci-lint")))))
-
-  (add-to-list 'lsp-language-id-configuration '(go-mode . "golangci-lint")))
 ```
