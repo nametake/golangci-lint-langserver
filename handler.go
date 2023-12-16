@@ -91,8 +91,14 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 
 		d := Diagnostic{
 			Range: Range{
-				Start: Position{Line: issue.Pos.Line - 1, Character: issue.Pos.Column - 1},
-				End:   Position{Line: issue.Pos.Line - 1, Character: issue.Pos.Column - 1},
+				Start: Position{
+					Line:      max(issue.Pos.Line-1, 0),
+					Character: max(issue.Pos.Column-1, 0),
+				},
+				End: Position{
+					Line:      max(issue.Pos.Line-1, 0),
+					Character: max(issue.Pos.Column-1, 0),
+				},
 			},
 			Severity: issue.DiagSeverity(),
 			Source:   &issue.FromLinter,
@@ -102,6 +108,13 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	}
 
 	return diagnostics, nil
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func (h *langHandler) diagnosticMessage(issue *Issue) string {
