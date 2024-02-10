@@ -105,3 +105,20 @@ lspconfig.golangci_lint_ls.setup {
                                               (gethash "golangci-lint"
                                                        (lsp-configuration-section "golangci-lint")))))
 ```
+
+### Configuration for [helix](https://helix-editor.com/)
+
+You can use `.golangci.yaml` in the project root directory to enable other [linters](https://golangci-lint.run/usage/linters/)
+
+```toml
+[[language]]
+name = "go"
+auto-format = true
+language-servers = [ "gopls", "golangci-lint-lsp" ]
+
+[language-server.golangci-lint-lsp]
+command = "golangci-lint-langserver"
+
+[language-server.golangci-lint-lsp.config]
+command = ["golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"]
+```
