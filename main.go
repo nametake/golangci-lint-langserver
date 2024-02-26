@@ -23,7 +23,7 @@ func main() {
 
 	var connOpt []jsonrpc2.ConnOpt
 
-	logger.Printf("golangci-lint-langserver: connections opened")
+	logger.Infof("golangci-lint-langserver: connections opened")
 
 	<-jsonrpc2.NewConn(
 		context.Background(),
@@ -32,7 +32,7 @@ func main() {
 		connOpt...,
 	).DisconnectNotify()
 
-	logger.Printf("golangci-lint-langserver: connections closed")
+	logger.Infof("golangci-lint-langserver: connections closed")
 }
 
 type stdrwc struct{}
