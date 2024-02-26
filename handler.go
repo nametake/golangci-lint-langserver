@@ -134,7 +134,7 @@ func (h *langHandler) linter() {
 
 		diagnostics, err := h.lint(uri)
 		if err != nil {
-			h.logger.Printf("%s", err)
+			h.logger.Errorf("%s", err)
 
 			continue
 		}
@@ -146,7 +146,7 @@ func (h *langHandler) linter() {
 				URI:         uri,
 				Diagnostics: diagnostics,
 			}); err != nil {
-			h.logger.Printf("%s", err)
+			h.logger.Errorf("%s", err)
 		}
 	}
 }

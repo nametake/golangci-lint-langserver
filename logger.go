@@ -9,23 +9,30 @@ import (
 var _ logger = (*stdLogger)(nil)
 
 type logger interface {
-	Printf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
 	DebugJSON(label string, arg interface{})
 }
 
 type stdLogger struct {
 	debug  bool
 	stderr *log.Logger
+	stdout *log.Logger
 }
 
 func newStdLogger(debug bool) *stdLogger {
 	return &stdLogger{
 		debug:  debug,
 		stderr: log.New(os.Stderr, "", 0),
+		stdout: log.New(os.Stdout, "", 0),
 	}
 }
 
-func (l *stdLogger) Printf(format string, args ...interface{}) {
+func (l *stdLogger) Infof(format string, args ...interface{}) {
+	l.stdout.Printf(format, args...)
+}
+
+func (l *stdLogger) Errorf(format string, args ...interface{}) {
 	l.stderr.Printf(format, args...)
 }
 
