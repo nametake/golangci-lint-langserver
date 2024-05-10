@@ -15,6 +15,7 @@ func NewHandler(logger logger, noLinterName bool) jsonrpc2.Handler {
 	handler := &langHandler{
 		logger:       logger,
 		request:      make(chan DocumentURI),
+		stopCh:       make(chan struct{}),
 		noLinterName: noLinterName,
 	}
 	go handler.linter()
@@ -26,6 +27,7 @@ type langHandler struct {
 	logger       logger
 	conn         *jsonrpc2.Conn
 	request      chan DocumentURI
+	stopCh       chan struct{}
 	command      []string
 	noLinterName bool
 
@@ -159,7 +161,7 @@ func (h *langHandler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *json
 		return h.handleInitialize(ctx, conn, req)
 	case "initialized":
 		return
-	case "shutdown":
+	case "shutdown", "exit":
 		return h.handleShutdown(ctx, conn, req)
 	case "textDocument/didOpen":
 		return h.handleTextDocumentDidOpen(ctx, conn, req)
@@ -198,8 +200,9 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 	}, nil
 }
 
-func (h *langHandler) handleShutdown(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (result interface{}, err error) {
-	close(h.request)
+func (h *langHandler) handleShutdown(ctx context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (result interface{}, err error) {
+
+	close(h.stopCh)
 
 	return nil, nil
 }
@@ -210,30 +213,67 @@ func (h *langHandler) handleTextDocumentDidOpen(_ context.Context, _ *jsonrpc2.C
 		return nil, err
 	}
 
-	h.request <- params.TextDocument.URI
+	select {
+	case <-h.stopCh:
+		return
+	case h.request <- params.TextDocument.URI:
+	}
 
 	return nil, nil
 }
 
-func (h *langHandler) handleTextDocumentDidClose(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (result interface{}, err error) {
-	return nil, nil
-}
-
-func (h *langHandler) handleTextDocumentDidChange(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (result interface{}, err error) {
-	return nil, nil
-}
-
-func (h *langHandler) handleTextDocumentDidSave(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
-	var params DidSaveTextDocumentParams
+func (h *langHandler) handleTextDocumentDidClose(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	var params DidOpenTextDocumentParams
 	if err := json.Unmarshal(*req.Params, &params); err != nil {
 		return nil, err
 	}
 
-	h.request <- params.TextDocument.URI
+	select {
+	case <-h.stopCh:
+		return
+	case h.request <- params.TextDocument.URI:
+	}
+	return nil, nil
+}
 
+func (h *langHandler) handleTextDocumentDidChange(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	var params DidOpenTextDocumentParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	select {
+	case <-h.stopCh:
+		return
+	case h.request <- params.TextDocument.URI:
+	}
+	return nil, nil
+}
+
+func (h *langHandler) handleTextDocumentDidSave(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	var params DidOpenTextDocumentParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	select {
+	case <-h.stopCh:
+		return
+	case h.request <- params.TextDocument.URI:
+	}
 	return nil, nil
 }
 
 func (h *langHandler) handlerWorkspaceDidChangeConfiguration(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (result interface{}, err error) {
+	var params DidOpenTextDocumentParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	select {
+	case <-h.stopCh:
+		return
+	case h.request <- params.TextDocument.URI:
+	}
 	return nil, nil
 }
