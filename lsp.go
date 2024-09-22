@@ -8,7 +8,7 @@ type InitializeParams struct {
 }
 
 type InitializationOptions struct {
-	Command []string
+	Command []string `json:"command"`
 }
 
 type InitializeResult struct {
