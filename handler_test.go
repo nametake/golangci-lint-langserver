@@ -92,7 +92,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 				{
 					Range: Range{
 						Start: Position{
-							Line:      8,
+							Line:      7,
 							Character: 0,
 						},
 						End: Position{
