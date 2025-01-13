@@ -13,8 +13,7 @@ func pt(s string) *string {
 }
 
 func TestLangHandler_lint_Integration(t *testing.T) {
-	_, err := exec.LookPath("golangci-lint")
-	if err != nil {
+	if _, err := exec.LookPath("golangci-lint"); err != nil {
 		t.Fatal("golangci-lint is not installed in this environment")
 	}
 
@@ -25,13 +24,13 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 		want     []Diagnostic
 	}{
 		{
-			name: "simple",
+			name: "no config file",
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
-				rootDir: filepath.Dir("./testdata/simple"),
+				rootDir: filepath.Dir("./testdata/noconfig"),
 			},
-			filePath: "./testdata/simple/main.go",
+			filePath: "./testdata/noconfig/main.go",
 			want: []Diagnostic{
 				{
 					Range: Range{
@@ -53,7 +52,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			},
 		},
 		{
-			name: "nolintername",
+			name: "nolintername option works as expected",
 			h: &langHandler{
 				logger:       newStdLogger(false),
 				command:      []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
@@ -77,6 +76,34 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 					Code:               nil,
 					Source:             pt("unused"),
 					Message:            "var `foo` is unused",
+					RelatedInformation: nil,
+				},
+			},
+		},
+		{
+			name: "config file is loaded successfully",
+			h: &langHandler{
+				logger:  newStdLogger(false),
+				command: []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
+				rootDir: filepath.Dir("./testdata/nolintername"),
+			},
+			filePath: "./testdata/loadconfig/main.go",
+			want: []Diagnostic{
+				{
+					Range: Range{
+						Start: Position{
+							Line:      8,
+							Character: 0,
+						},
+						End: Position{
+							Line:      8,
+							Character: 0,
+						},
+					},
+					Severity:           DSWarning,
+					Code:               nil,
+					Source:             pt("wsl"),
+					Message:            "wsl: block should not end with a whitespace (or comment)",
 					RelatedInformation: nil,
 				},
 			},
