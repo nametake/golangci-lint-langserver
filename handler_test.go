@@ -52,6 +52,35 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "nolintername",
+			h: &langHandler{
+				logger:       newStdLogger(false),
+				command:      []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
+				rootDir:      filepath.Dir("./testdata/nolintername"),
+				noLinterName: true,
+			},
+			filePath: "./testdata/nolintername/main.go",
+			want: []Diagnostic{
+				{
+					Range: Range{
+						Start: Position{
+							Line:      2,
+							Character: 4,
+						},
+						End: Position{
+							Line:      2,
+							Character: 4,
+						},
+					},
+					Severity:           DSWarning,
+					Code:               nil,
+					Source:             pt("unused"),
+					Message:            "var `foo` is unused",
+					RelatedInformation: nil,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
