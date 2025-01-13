@@ -36,11 +36,11 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 				{
 					Range: Range{
 						Start: Position{
-							Line:      2,
+							Line:      3,
 							Character: 4,
 						},
 						End: Position{
-							Line:      2,
+							Line:      3,
 							Character: 4,
 						},
 					},
@@ -65,11 +65,11 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 				{
 					Range: Range{
 						Start: Position{
-							Line:      2,
+							Line:      3,
 							Character: 4,
 						},
 						End: Position{
-							Line:      2,
+							Line:      3,
 							Character: 4,
 						},
 					},
