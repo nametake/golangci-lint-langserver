@@ -1,0 +1,12 @@
+---
+name: Go test
+on:
+  push:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+      - run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - run: go test ./...
