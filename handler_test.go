@@ -18,42 +18,56 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 		t.Fatal("golangci-lint is not installed in this environment")
 	}
 
-	testFilePath, _ := filepath.Abs("./testdata/simple/main.go")
-
-	h := &langHandler{
-		logger:  newStdLogger(false),
-		command: []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
-		rootDir: filepath.Dir(testFilePath),
-	}
-
-	testURI := DocumentURI("file://" + testFilePath)
-
-	diagnostics, err := h.lint(testURI)
-	if err != nil {
-		t.Fatalf("lint() returned unexpected error: %v", err)
-	}
-
-	want := []Diagnostic{
+	tests := []struct {
+		name     string
+		h        *langHandler
+		filePath string
+		want     []Diagnostic
+	}{
 		{
-			Range: Range{
-				Start: Position{
-					Line:      2,
-					Character: 4,
-				},
-				End: Position{
-					Line:      2,
-					Character: 4,
+			name: "simple",
+			h: &langHandler{
+				logger:  newStdLogger(false),
+				command: []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
+				rootDir: filepath.Dir("./testdata/simple"),
+			},
+			filePath: "./testdata/simple/main.go",
+			want: []Diagnostic{
+				{
+					Range: Range{
+						Start: Position{
+							Line:      2,
+							Character: 4,
+						},
+						End: Position{
+							Line:      2,
+							Character: 4,
+						},
+					},
+					Severity:           DSWarning,
+					Code:               nil,
+					Source:             pt("unused"),
+					Message:            "unused: var `foo` is unused",
+					RelatedInformation: nil,
 				},
 			},
-			Severity:           DSWarning,
-			Code:               nil,
-			Source:             pt("unused"),
-			Message:            "unused: var `foo` is unused",
-			RelatedInformation: nil,
 		},
 	}
 
-	if diff := cmp.Diff(want, diagnostics); diff != "" {
-		t.Errorf("lint() mismatch (-want +got):\n%s", diff)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFilePath, err := filepath.Abs(tt.filePath)
+			if err != nil {
+				t.Fatalf("filepath.Abs() returned unexpected error: %v", err)
+			}
+			testURI := DocumentURI("file://" + testFilePath)
+			diagnostics, err := tt.h.lint(testURI)
+			if err != nil {
+				t.Fatalf("lint() returned unexpected error: %v", err)
+			}
+			if diff := cmp.Diff(tt.want, diagnostics); diff != "" {
+				t.Errorf("lint() mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
