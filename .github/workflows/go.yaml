@@ -3,6 +3,13 @@ name: Go
 on:
   push:
 jobs:
+  vet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+      - name: Run go vet
+        run: go vet ./...
   test:
     runs-on: ubuntu-latest
     steps:
@@ -12,3 +19,12 @@ jobs:
         run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
       - name: Run test
         run: go test ./...
+  golangci-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - name: Run golangci-lint
+        run: golangci-lint run
