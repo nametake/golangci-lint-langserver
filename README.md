@@ -91,3 +91,20 @@ Support for golangci-lint-langserver is
 to lsp-mode since late 2023. When the `golangci-lint-langserver` executable is
 found, it is automatically started for Go buffers as an add-on server along with
 the `gopls` language server.
+
+### Configuration for [helix](https://helix-editor.com/)
+
+You can use `.golangci.yaml` in the project root directory to enable other [linters](https://golangci-lint.run/usage/linters/)
+
+```toml
+[[language]]
+name = "go"
+auto-format = true
+language-servers = [ "gopls", "golangci-lint-lsp" ]
+
+[language-server.golangci-lint-lsp]
+command = "golangci-lint-langserver"
+
+[language-server.golangci-lint-lsp.config]
+command = ["golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"]
+```
