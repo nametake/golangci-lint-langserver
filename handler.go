@@ -53,6 +53,12 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	path := uriToPath(string(uri))
 	dir, file := filepath.Split(path)
 
+	if !strings.HasSuffix(file, ".go") &&
+		!strings.HasSuffix(file, ".mod") &&
+		!strings.HasSuffix(file, ".sum") {
+		return diagnostics, nil
+	}
+
 	args := make([]string, 0, len(h.command))
 	args = append(args, h.command[1:]...)
 	args = append(args, dir)
