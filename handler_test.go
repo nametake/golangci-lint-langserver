@@ -87,7 +87,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
-				rootDir: filepath.Dir("./testdata/nolintername"),
+				rootDir: filepath.Dir("./testdata/loadconfig"),
 			},
 			filePath: "./testdata/loadconfig/main.go",
 			want: []Diagnostic{
