@@ -11,12 +11,20 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func NewHandler(logger logger, noLinterName bool) jsonrpc2.Handler {
+type HandlerConfig struct {
+	Logger       logger
+	NoLinterName bool
+	Close        func()
+}
+
+func NewHandler(cfg *HandlerConfig) jsonrpc2.Handler {
 	handler := &langHandler{
-		logger:       logger,
+		logger:       cfg.Logger,
 		request:      make(chan DocumentURI),
-		noLinterName: noLinterName,
+		noLinterName: cfg.NoLinterName,
+		close:        cfg.Close,
 	}
+
 	go handler.linter()
 
 	return jsonrpc2.HandlerWithError(handler.handle)
@@ -28,6 +36,7 @@ type langHandler struct {
 	request      chan DocumentURI
 	command      []string
 	noLinterName bool
+	close        func()
 
 	rootURI string
 	rootDir string
@@ -110,13 +119,6 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	return diagnostics, nil
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func (h *langHandler) diagnosticMessage(issue *Issue) string {
 	if h.noLinterName {
 		return issue.Text
@@ -126,12 +128,7 @@ func (h *langHandler) diagnosticMessage(issue *Issue) string {
 }
 
 func (h *langHandler) linter() {
-	for {
-		uri, ok := <-h.request
-		if !ok {
-			break
-		}
-
+	for uri := range h.request {
 		diagnostics, err := h.lint(uri)
 		if err != nil {
 			h.logger.Printf("%s", err)
@@ -161,6 +158,8 @@ func (h *langHandler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *json
 		return
 	case "shutdown":
 		return h.handleShutdown(ctx, conn, req)
+	case "exit":
+		return h.handleExit(ctx, conn, req)
 	case "textDocument/didOpen":
 		return h.handleTextDocumentDidOpen(ctx, conn, req)
 	case "textDocument/didClose":
@@ -198,8 +197,22 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 	}, nil
 }
 
+func (h *langHandler) shutdown() {
+	if h.request != nil {
+		close(h.request)
+		h.request = nil
+	}
+}
+
 func (h *langHandler) handleShutdown(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (result interface{}, err error) {
-	close(h.request)
+	h.shutdown()
+
+	return nil, nil
+}
+
+func (h *langHandler) handleExit(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (result interface{}, err error) {
+	h.shutdown()
+	h.close()
 
 	return nil, nil
 }

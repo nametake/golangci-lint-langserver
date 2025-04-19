@@ -19,20 +19,37 @@ func main() {
 
 	logger := newStdLogger(*debug)
 
-	handler := NewHandler(logger, *noLinterName)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	handler := NewHandler(&HandlerConfig{
+		Logger:       logger,
+		NoLinterName: *noLinterName,
+		Close:        cancel,
+	})
 
 	var connOpt []jsonrpc2.ConnOpt
+	if *debug {
+		connOpt = append(connOpt, jsonrpc2.LogMessages(logger))
+	}
 
-	logger.Printf("golangci-lint-langserver: connections opened")
-
-	<-jsonrpc2.NewConn(
-		context.Background(),
+	conn := jsonrpc2.NewConn(
+		ctx,
 		jsonrpc2.NewBufferedStream(stdrwc{}, jsonrpc2.VSCodeObjectCodec{}),
 		handler,
 		connOpt...,
-	).DisconnectNotify()
+	)
 
-	logger.Printf("golangci-lint-langserver: connections closed")
+	defer conn.Close()
+
+	logger.Printf("golangci-lint-langserver: connection opened")
+	defer logger.Printf("golangci-lint-langserver: connection closed")
+
+	select {
+	case <-ctx.Done():
+	case <-conn.DisconnectNotify():
+	}
 }
 
 type stdrwc struct{}
