@@ -17,6 +17,8 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 		t.Fatal("golangci-lint is not installed in this environment")
 	}
 
+	command := []string{"golangci-lint", "run", "--output.json.path", "stdout", "--issues-exit-code=1", "--show-stats=false"}
+
 	tests := []struct {
 		name     string
 		h        *langHandler
@@ -27,7 +29,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			name: "no config file",
 			h: &langHandler{
 				logger:  newStdLogger(false),
-				command: []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
+				command: command,
 				rootDir: filepath.Dir("./testdata/noconfig"),
 			},
 			filePath: "./testdata/noconfig/main.go",
@@ -46,7 +48,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 					Severity:           DSWarning,
 					Code:               nil,
 					Source:             pt("unused"),
-					Message:            "unused: var `foo` is unused",
+					Message:            "unused: var foo is unused",
 					RelatedInformation: nil,
 				},
 			},
@@ -55,7 +57,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			name: "nolintername option works as expected",
 			h: &langHandler{
 				logger:       newStdLogger(false),
-				command:      []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
+				command:      command,
 				rootDir:      filepath.Dir("./testdata/nolintername"),
 				noLinterName: true,
 			},
@@ -75,7 +77,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 					Severity:           DSWarning,
 					Code:               nil,
 					Source:             pt("unused"),
-					Message:            "var `foo` is unused",
+					Message:            "var foo is unused",
 					RelatedInformation: nil,
 				},
 			},
@@ -84,8 +86,8 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			name: "config file is loaded successfully",
 			h: &langHandler{
 				logger:  newStdLogger(false),
-				command: []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
-				rootDir: filepath.Dir("./testdata/nolintername"),
+				command: command,
+				rootDir: filepath.Dir("./testdata/loadconfig"),
 			},
 			filePath: "./testdata/loadconfig/main.go",
 			want: []Diagnostic{
@@ -112,7 +114,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			name: "multiple files in rootDir",
 			h: &langHandler{
 				logger:  newStdLogger(false),
-				command: []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
+				command: command,
 				rootDir: filepath.Dir("./testdata/multifile"),
 			},
 			filePath: "./testdata/multifile/bar.go",
@@ -131,7 +133,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 					Severity:           DSWarning,
 					Code:               nil,
 					Source:             pt("unused"),
-					Message:            "unused: var `bar` is unused",
+					Message:            "unused: var bar is unused",
 					RelatedInformation: nil,
 				},
 			},
@@ -140,7 +142,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			name: "nested directories in rootDir",
 			h: &langHandler{
 				logger:  newStdLogger(false),
-				command: []string{"golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"},
+				command: command,
 				rootDir: filepath.Dir("./testdata/nesteddir"),
 			},
 			filePath: "./testdata/nesteddir/bar/bar.go",
@@ -159,7 +161,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 					Severity:           DSWarning,
 					Code:               nil,
 					Source:             pt("unused"),
-					Message:            "unused: var `bar` is unused",
+					Message:            "unused: var bar is unused",
 					RelatedInformation: nil,
 				},
 			},
