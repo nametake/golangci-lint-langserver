@@ -3,11 +3,11 @@ package main
 import "strings"
 
 type Issue struct {
-	FromLinter  string      `json:"FromLinter"`
-	Text        string      `json:"Text"`
-	Severity    string      `json:"Severity"`
-	SourceLines []string    `json:"SourceLines"`
-	Replacement interface{} `json:"Replacement"`
+	FromLinter  string   `json:"FromLinter"`
+	Text        string   `json:"Text"`
+	Severity    string   `json:"Severity"`
+	SourceLines []string `json:"SourceLines"`
+	Replacement any      `json:"Replacement"`
 	Pos         struct {
 		Filename string `json:"Filename"`
 		Offset   int    `json:"Offset"`

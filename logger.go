@@ -9,9 +9,8 @@ import (
 var _ logger = (*stdLogger)(nil)
 
 type logger interface {
-	Printf(format string, args ...interface{})
-	Debugf(format string, args ...interface{})
-	DebugJSON(label string, arg interface{})
+	Printf(format string, args ...any)
+	DebugJSON(label string, arg any)
 }
 
 type stdLogger struct {
@@ -26,15 +25,11 @@ func newStdLogger(debug bool) *stdLogger {
 	}
 }
 
-func (l *stdLogger) Printf(format string, args ...interface{}) {
+func (l *stdLogger) Printf(format string, args ...any) {
 	l.stderr.Printf(format, args...)
 }
 
-func (l *stdLogger) Debugf(format string, args ...interface{}) {
-	l.stderr.Printf(format, args...)
-}
-
-func (l *stdLogger) DebugJSON(label string, arg interface{}) {
+func (l *stdLogger) DebugJSON(label string, arg any) {
 	if !l.debug {
 		return
 	}
