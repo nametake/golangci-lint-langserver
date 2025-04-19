@@ -17,7 +17,6 @@ type InitializeResult struct {
 
 type TextDocumentSyncKind int
 
-//nolint:unused,deadcode
 const (
 	TDSKNone TextDocumentSyncKind = iota
 	TDSKFull
@@ -89,7 +88,6 @@ type DiagnosticRelatedInformation struct {
 
 type DiagnosticSeverity int
 
-//nolint:unused,deadcode
 const (
 	DSError DiagnosticSeverity = iota + 1
 	DSWarning

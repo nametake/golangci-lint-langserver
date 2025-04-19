@@ -42,7 +42,6 @@ func (i Issue) DiagSeverity() DiagnosticSeverity {
 	}
 }
 
-//nolint:unused,deadcode
 type GolangCILintResult struct {
 	Issues []Issue `json:"Issues"`
 	Report struct {
