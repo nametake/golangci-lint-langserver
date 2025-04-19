@@ -56,7 +56,6 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	args := make([]string, 0, len(h.command))
 	args = append(args, h.command[1:]...)
 	args = append(args, dir)
-	//nolint:gosec
 	cmd := exec.Command(h.command[0], args...)
 	if strings.HasPrefix(path, h.rootDir) {
 		cmd.Dir = h.rootDir
