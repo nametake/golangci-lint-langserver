@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"os"
 )
 
 var _ logger = (*stdLogger)(nil)
@@ -21,7 +20,7 @@ type stdLogger struct {
 func newStdLogger(debug bool) *stdLogger {
 	return &stdLogger{
 		debug:  debug,
-		stderr: log.New(os.Stderr, "", 0),
+		stderr: log.New(log.Writer(), "", log.LstdFlags),
 	}
 }
 
