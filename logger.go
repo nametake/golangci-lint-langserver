@@ -10,6 +10,7 @@ var _ logger = (*stdLogger)(nil)
 
 type logger interface {
 	Printf(format string, args ...interface{})
+	Debugf(format string, args ...interface{})
 	DebugJSON(label string, arg interface{})
 }
 
@@ -29,6 +30,10 @@ func (l *stdLogger) Printf(format string, args ...interface{}) {
 	l.stderr.Printf(format, args...)
 }
 
+func (l *stdLogger) Debugf(format string, args ...interface{}) {
+	l.stderr.Printf(format, args...)
+}
+
 func (l *stdLogger) DebugJSON(label string, arg interface{}) {
 	if !l.debug {
 		return
@@ -37,6 +42,7 @@ func (l *stdLogger) DebugJSON(label string, arg interface{}) {
 	b, err := json.Marshal(arg)
 	if err != nil {
 		l.stderr.Println(err)
+		return
 	}
 
 	l.stderr.Println(label, string(b))

@@ -51,5 +51,6 @@ type GolangCILintResult struct {
 			Enabled          bool   `json:"Enabled"`
 			EnabledByDefault bool   `json:"EnabledByDefault,omitempty"`
 		} `json:"Linters"`
+		Error string `json:"Error"`
 	} `json:"Report"`
 }
