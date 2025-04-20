@@ -167,7 +167,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			},
 		},
 		{
-			name: "monorepo (foo)",
+			name: "monorepo with multiple go.mod and .golangci.yaml files (foo module)",
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
@@ -195,7 +195,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			},
 		},
 		{
-			name: "monorepo (bar)",
+			name: "monorepo with multiple go.mod and .golangci.yaml files (bar module)",
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
