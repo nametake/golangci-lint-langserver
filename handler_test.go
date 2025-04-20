@@ -166,6 +166,79 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "monorepo (foo)",
+			h: &langHandler{
+				logger:  newStdLogger(false),
+				command: command,
+				rootDir: filepath.Dir("./testdata/monorepo"),
+			},
+			filePath: "./testdata/monorepo/foo/main.go",
+			want: []Diagnostic{
+				{
+					Range: Range{
+						Start: Position{
+							Line:      8,
+							Character: 0,
+						},
+						End: Position{
+							Line:      8,
+							Character: 0,
+						},
+					},
+					Severity:           DSWarning,
+					Code:               nil,
+					Source:             pt("wsl"),
+					Message:            "wsl: block should not end with a whitespace (or comment)",
+					RelatedInformation: nil,
+				},
+			},
+		},
+		{
+			name: "monorepo (bar)",
+			h: &langHandler{
+				logger:  newStdLogger(false),
+				command: command,
+				rootDir: filepath.Dir("./testdata/monorepo"),
+			},
+			filePath: "./testdata/monorepo/bar/main.go",
+			want: []Diagnostic{
+				{
+					Range: Range{
+						Start: Position{
+							Line:      3,
+							Character: 4,
+						},
+						End: Position{
+							Line:      3,
+							Character: 4,
+						},
+					},
+					Severity:           DSWarning,
+					Code:               nil,
+					Source:             pt("unused"),
+					Message:            "unused: var foo is unused",
+					RelatedInformation: nil,
+				},
+				{
+					Range: Range{
+						Start: Position{
+							Line:      8,
+							Character: 0,
+						},
+						End: Position{
+							Line:      8,
+							Character: 0,
+						},
+					},
+					Severity:           DSWarning,
+					Code:               nil,
+					Source:             pt("wsl"),
+					Message:            "wsl: block should not end with a whitespace (or comment)",
+					RelatedInformation: nil,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
