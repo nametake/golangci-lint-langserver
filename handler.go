@@ -33,10 +33,17 @@ type langHandler struct {
 	rootDir string
 }
 
+// As defined in the `golangci-lint` source code:
+// https://github.com/golangci/golangci-lint/blob/main/pkg/exitcodes/exitcodes.go#L24
+const GoNoFilesExitCode = 5
+
 func (h *langHandler) errToDiagnostics(err error) []Diagnostic {
 	var message string
 	switch e := err.(type) {
 	case *exec.ExitError:
+		if e.ExitCode() == GoNoFilesExitCode {
+			return []Diagnostic{}
+		}
 		message = string(e.Stderr)
 	default:
 		h.logger.DebugJSON("golangci-lint-langserver: errToDiagnostics message", message)
