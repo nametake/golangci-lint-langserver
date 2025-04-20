@@ -3,11 +3,11 @@ package main
 import "strings"
 
 type Issue struct {
-	FromLinter  string      `json:"FromLinter"`
-	Text        string      `json:"Text"`
-	Severity    string      `json:"Severity"`
-	SourceLines []string    `json:"SourceLines"`
-	Replacement interface{} `json:"Replacement"`
+	FromLinter  string   `json:"FromLinter"`
+	Text        string   `json:"Text"`
+	Severity    string   `json:"Severity"`
+	SourceLines []string `json:"SourceLines"`
+	Replacement any      `json:"Replacement"`
 	Pos         struct {
 		Filename string `json:"Filename"`
 		Offset   int    `json:"Offset"`
@@ -42,7 +42,6 @@ func (i Issue) DiagSeverity() DiagnosticSeverity {
 	}
 }
 
-//nolint:unused,deadcode
 type GolangCILintResult struct {
 	Issues []Issue `json:"Issues"`
 	Report struct {
@@ -51,5 +50,6 @@ type GolangCILintResult struct {
 			Enabled          bool   `json:"Enabled"`
 			EnabledByDefault bool   `json:"EnabledByDefault,omitempty"`
 		} `json:"Linters"`
+		Error string `json:"Error"`
 	} `json:"Report"`
 }

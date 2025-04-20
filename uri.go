@@ -27,7 +27,6 @@ func uriToPath(uri string) string {
 }
 
 func isWindowsDriveURIPath(uri string) bool {
-	//nolint:gomnd
 	if len(uri) < 4 {
 		return false
 	}
