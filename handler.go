@@ -90,8 +90,6 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
 
 	for _, issue := range result.Issues {
-		issue := issue
-
 		if file != issue.Pos.Filename {
 			continue
 		}
@@ -115,13 +113,6 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	}
 
 	return diagnostics, nil
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func (h *langHandler) diagnosticMessage(issue *Issue) string {
