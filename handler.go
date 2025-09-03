@@ -55,25 +55,33 @@ func (h *langHandler) errToDiagnostics(err error) []Diagnostic {
 	}
 }
 
-// findModuleRoot searches upwards from the given path to find the nearest directory containing a go.mod file.
-func findModuleRoot(dir string) (string, error) {
-	absDir, err := filepath.Abs(dir)
+// findModuleRoot searches upwards from the given path till root to find the nearest directory containing a go.mod file.
+func findModuleRoot(dir string, rootDir string) (string, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	rootDir, err = filepath.Abs(rootDir)
 	if err != nil {
 		return "", err
 	}
 
-	for {
-		modPath := filepath.Join(absDir, "go.mod")
-		if _, err := os.Stat(modPath); err == nil {
-			return absDir, nil
-		}
-		parent := filepath.Dir(absDir)
-		if parent == absDir { // reached root
-			break
-		}
-		absDir = parent
+	rel, err := filepath.Rel(rootDir, dir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("directory %s is outside root %s", dir, rootDir)
 	}
-	return "", fmt.Errorf("no go.mod file found")
+
+	for {
+		modPath := filepath.Join(dir, "go.mod")
+		if _, err := os.Stat(modPath); err == nil {
+			return dir, nil
+		}
+		if dir == rootDir {
+			// we reached project root without finding go.mod
+			return "", fmt.Errorf("no go.mod found from %s up to %s", dir, rootDir)
+		}
+		dir = filepath.Dir(dir)
+	}
 }
 
 func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
@@ -83,7 +91,7 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	dir, file := filepath.Split(path)
 
 	// Find the nearest module root by searching upwards for go.mod
-	moduleDir, err := findModuleRoot(dir)
+	moduleDir, err := findModuleRoot(dir, h.rootDir)
 	if err != nil {
 		// Fallback to original behavior if no go.mod found
 		h.logger.DebugJSON("golangci-lint-langserver: no go.mod found, falling back to file dir", dir)
