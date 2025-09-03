@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -54,19 +55,49 @@ func (h *langHandler) errToDiagnostics(err error) []Diagnostic {
 	}
 }
 
+// findModuleRoot searches upwards from the given path to find the nearest directory containing a go.mod file.
+func findModuleRoot(dir string) (string, error) {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		modPath := filepath.Join(absDir, "go.mod")
+		if _, err := os.Stat(modPath); err == nil {
+			return absDir, nil
+		}
+		parent := filepath.Dir(absDir)
+		if parent == absDir { // reached root
+			break
+		}
+		absDir = parent
+	}
+	return "", fmt.Errorf("no go.mod file found")
+}
+
 func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	diagnostics := make([]Diagnostic, 0)
 
 	path := uriToPath(string(uri))
 	dir, file := filepath.Split(path)
 
+	// Find the nearest module root by searching upwards for go.mod
+	moduleDir, err := findModuleRoot(dir)
+	if err != nil {
+		// Fallback to original behavior if no go.mod found
+		h.logger.DebugJSON("golangci-lint-langserver: no go.mod found, falling back to file dir", dir)
+		moduleDir = dir
+	}
+
 	args := make([]string, 0, len(h.command))
 	args = append(args, h.command[1:]...)
 	args = append(args, dir)
 	cmd := exec.Command(h.command[0], args...)
-	if strings.HasPrefix(path, h.rootDir) {
-		cmd.Dir = h.rootDir
-		file = path[len(h.rootDir)+1:]
+
+	if strings.HasPrefix(path, moduleDir) {
+		file = path[len(moduleDir)+1:]
+		cmd.Dir = moduleDir
 	} else {
 		cmd.Dir = dir
 	}
