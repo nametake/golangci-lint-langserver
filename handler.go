@@ -64,11 +64,9 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	args = append(args, h.command[1:]...)
 	args = append(args, dir)
 	cmd := exec.Command(h.command[0], args...)
+	cmd.Dir = dir
 	if strings.HasPrefix(path, h.rootDir) {
-		cmd.Dir = h.rootDir
 		file = path[len(h.rootDir)+1:]
-	} else {
-		cmd.Dir = dir
 	}
 
 	h.logger.DebugJSON("golangci-lint-langserver: golingci-lint cmd:", cmd.Args)
