@@ -61,7 +61,21 @@ augroup END
 
 ### Configuration for [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig)
 
-**Requires Neovim [v0.6.1](https://github.com/neovim/neovim/releases/tag/v0.6.1) or [nightly](https://github.com/neovim/neovim/releases/tag/nightly).**
+**Requires Neovim [v0.11.0+](https://github.com/neovim/neovim/releases/tag) or [nightly](https://github.com/neovim/neovim/releases/tag/nightly).**
+
+```lua
+vim.lsp.config('golangci_lint_ls', {
+	cmd = {'golangci-lint-langserver'},
+	root_markers = { '.git', 'go.mod' },
+	init_options = {
+		command = {
+			'golangci-lint', 'run', '--output.json.path', 'stdout', '--show-stats=false', '--issues-exit-code=1'
+		},
+	},
+})
+```
+
+**Requires Neovim [v0.6.1](https://github.com/neovim/neovim/releases/tag/v0.6.1)**
 
 ```lua
 local lspconfig = require 'lspconfig'
