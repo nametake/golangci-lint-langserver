@@ -2,13 +2,26 @@ package main
 
 import "strings"
 
+// GolangCITextEdit represents a text edit from golangci-lint v2 SuggestedFixes
+type GolangCITextEdit struct {
+	Pos     int    `json:"Pos"`     // byte offset start
+	End     int    `json:"End"`     // byte offset end
+	NewText string `json:"NewText"` // base64 encoded replacement text
+}
+
+// SuggestedFix represents a suggested fix from golangci-lint v2
+type SuggestedFix struct {
+	Message   string             `json:"Message"`
+	TextEdits []GolangCITextEdit `json:"TextEdits"`
+}
+
 type Issue struct {
-	FromLinter  string   `json:"FromLinter"`
-	Text        string   `json:"Text"`
-	Severity    string   `json:"Severity"`
-	SourceLines []string `json:"SourceLines"`
-	Replacement any      `json:"Replacement"`
-	Pos         struct {
+	FromLinter     string         `json:"FromLinter"`
+	Text           string         `json:"Text"`
+	Severity       string         `json:"Severity"`
+	SourceLines    []string       `json:"SourceLines"`
+	SuggestedFixes []SuggestedFix `json:"SuggestedFixes"`
+	Pos            struct {
 		Filename string `json:"Filename"`
 		Offset   int    `json:"Offset"`
 		Line     int    `json:"Line"`

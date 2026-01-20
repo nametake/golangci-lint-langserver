@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -89,6 +90,13 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
 
+	// Read file content for converting byte offsets to positions
+	fileContent, err := os.ReadFile(path)
+	if err != nil {
+		h.logger.Printf("Failed to read file %s: %v", path, err)
+		fileContent = nil
+	}
+
 	for _, issue := range result.Issues {
 		if file != issue.Pos.Filename {
 			continue
@@ -114,6 +122,14 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 			Source:   &issue.FromLinter,
 			Message:  h.diagnosticMessage(&issue),
 		}
+
+		if len(issue.SuggestedFixes) > 0 && fileContent != nil {
+			fixData := h.convertSuggestedFixes(issue.SuggestedFixes, fileContent)
+			if fixData != nil {
+				d.Data = fixData
+			}
+		}
+
 		diagnostics = append(diagnostics, d)
 	}
 
@@ -172,6 +188,8 @@ func (h *langHandler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *json
 		return h.handleTextDocumentDidChange(ctx, conn, req)
 	case "textDocument/didSave":
 		return h.handleTextDocumentDidSave(ctx, conn, req)
+	case "textDocument/codeAction":
+		return h.handleTextDocumentCodeAction(ctx, conn, req)
 	case "workspace/didChangeConfiguration":
 		return h.handlerWorkspaceDidChangeConfiguration(ctx, conn, req)
 	}
@@ -197,6 +215,7 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 				OpenClose: true,
 				Save:      true,
 			},
+			CodeActionProvider: true,
 		},
 	}, nil
 }
@@ -239,4 +258,30 @@ func (h *langHandler) handleTextDocumentDidSave(_ context.Context, _ *jsonrpc2.C
 
 func (h *langHandler) handlerWorkspaceDidChangeConfiguration(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) (result any, err error) {
 	return nil, nil
+}
+
+func (h *langHandler) handleTextDocumentCodeAction(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (result any, err error) {
+	var params CodeActionParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	var codeActions []CodeAction
+
+	for _, diag := range params.Context.Diagnostics {
+		edit := h.extractWorkspaceEdit(params.TextDocument.URI, diag)
+		if edit == nil {
+			continue
+		}
+
+		action := CodeAction{
+			Title:       fmt.Sprintf("Fix: %s", diag.Message),
+			Kind:        CodeActionKindQuickFix,
+			Diagnostics: []Diagnostic{diag},
+			Edit:        edit,
+		}
+		codeActions = append(codeActions, action)
+	}
+
+	return codeActions, nil
 }

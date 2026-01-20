@@ -102,9 +102,49 @@ type Diagnostic struct {
 	Source             *string                        `json:"source,omitempty"`
 	Message            string                         `json:"message"`
 	RelatedInformation []DiagnosticRelatedInformation `json:"relatedInformation,omitempty"`
+	Data               any                            `json:"data,omitempty"`
 }
 
 type PublishDiagnosticsParams struct {
 	URI         DocumentURI  `json:"uri"`
 	Diagnostics []Diagnostic `json:"diagnostics"`
+}
+
+// Code Action types
+
+type CodeActionKind string
+
+const (
+	CodeActionKindQuickFix CodeActionKind = "quickfix"
+)
+
+type CodeActionParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Range        Range                  `json:"range"`
+	Context      CodeActionContext      `json:"context"`
+}
+
+type CodeActionContext struct {
+	Diagnostics []Diagnostic `json:"diagnostics"`
+}
+
+type TextEdit struct {
+	Range   Range  `json:"range"`
+	NewText string `json:"newText"`
+}
+
+type WorkspaceEdit struct {
+	Changes map[DocumentURI][]TextEdit `json:"changes,omitempty"`
+}
+
+type CodeAction struct {
+	Title       string         `json:"title"`
+	Kind        CodeActionKind `json:"kind,omitempty"`
+	Diagnostics []Diagnostic   `json:"diagnostics,omitempty"`
+	Edit        *WorkspaceEdit `json:"edit,omitempty"`
+}
+
+// DiagnosticFixData stores pre-converted fix data in Diagnostic.Data
+type DiagnosticFixData struct {
+	Edits []TextEdit `json:"edits"`
 }
