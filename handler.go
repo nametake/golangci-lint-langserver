@@ -94,6 +94,11 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 			continue
 		}
 
+		var sourceLineLen = 0
+		if len(issue.SourceLines) > 0 {
+			sourceLineLen = len(issue.SourceLines[0])
+		}
+
 		d := Diagnostic{
 			Range: Range{
 				Start: Position{
@@ -102,7 +107,7 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 				},
 				End: Position{
 					Line:      max(issue.Pos.Line-1, 0),
-					Character: max(issue.Pos.Column-1, 0),
+					Character: max(issue.Pos.Column-1, 0) + sourceLineLen,
 				},
 			},
 			Severity: issue.DiagSeverity(),
