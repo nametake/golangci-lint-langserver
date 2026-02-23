@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -37,6 +38,21 @@ type langHandler struct {
 // https://github.com/golangci/golangci-lint/blob/main/pkg/exitcodes/exitcodes.go#L24
 const GoNoFilesExitCode = 5
 
+func findModuleRoot(filePath, fallback string) string {
+	directory := filepath.Dir(filePath)
+	for {
+		if _, err := os.Stat(filepath.Join(directory, "go.mod")); err == nil {
+			return directory
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			break
+		}
+		directory = parent
+	}
+	return fallback
+}
+
 func (h *langHandler) errToDiagnostics(err error) []Diagnostic {
 	var message string
 	switch e := err.(type) {
@@ -60,13 +76,15 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	path := uriToPath(string(uri))
 	dir, file := filepath.Split(path)
 
+	moduleRoot := findModuleRoot(path, h.rootDir)
+
 	args := make([]string, 0, len(h.command))
 	args = append(args, h.command[1:]...)
 	args = append(args, dir)
 	cmd := exec.Command(h.command[0], args...)
-	if strings.HasPrefix(path, h.rootDir) {
-		cmd.Dir = h.rootDir
-		file = path[len(h.rootDir)+1:]
+	if strings.HasPrefix(path, moduleRoot) {
+		cmd.Dir = moduleRoot
+		file = path[len(moduleRoot)+1:]
 	} else {
 		cmd.Dir = dir
 	}

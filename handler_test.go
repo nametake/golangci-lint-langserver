@@ -12,6 +12,15 @@ func pt(s string) *string {
 	return &s
 }
 
+func mustAbs(t *testing.T, path string) string {
+	t.Helper()
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return abs
+}
+
 func TestLangHandler_lint_Integration(t *testing.T) {
 	if _, err := exec.LookPath("golangci-lint"); err != nil {
 		t.Fatal("golangci-lint is not installed in this environment")
@@ -30,7 +39,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
-				rootDir: filepath.Dir("./testdata/noconfig"),
+				rootDir: mustAbs(t, "./testdata/noconfig"),
 			},
 			filePath: "./testdata/noconfig/main.go",
 			want: []Diagnostic{
@@ -58,7 +67,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			h: &langHandler{
 				logger:       newStdLogger(false),
 				command:      command,
-				rootDir:      filepath.Dir("./testdata/nolintername"),
+				rootDir:      mustAbs(t, "./testdata/nolintername"),
 				noLinterName: true,
 			},
 			filePath: "./testdata/nolintername/main.go",
@@ -87,7 +96,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
-				rootDir: filepath.Dir("./testdata/loadconfig"),
+				rootDir: mustAbs(t, "./testdata/loadconfig"),
 			},
 			filePath: "./testdata/loadconfig/main.go",
 			want: []Diagnostic{
@@ -115,7 +124,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
-				rootDir: filepath.Dir("./testdata/multifile"),
+				rootDir: mustAbs(t, "./testdata/multifile"),
 			},
 			filePath: "./testdata/multifile/bar.go",
 			want: []Diagnostic{
@@ -143,7 +152,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
-				rootDir: filepath.Dir("./testdata/nesteddir"),
+				rootDir: mustAbs(t, "./testdata/nesteddir"),
 			},
 			filePath: "./testdata/nesteddir/bar/bar.go",
 			want: []Diagnostic{
@@ -171,7 +180,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
-				rootDir: filepath.Dir("./testdata/monorepo"),
+				rootDir: mustAbs(t, "./testdata/monorepo"),
 			},
 			filePath: "./testdata/monorepo/foo/main.go",
 			want: []Diagnostic{
@@ -199,7 +208,7 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 			h: &langHandler{
 				logger:  newStdLogger(false),
 				command: command,
-				rootDir: filepath.Dir("./testdata/monorepo"),
+				rootDir: mustAbs(t, "./testdata/monorepo"),
 			},
 			filePath: "./testdata/monorepo/bar/main.go",
 			want: []Diagnostic{
@@ -235,6 +244,62 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 					Code:               nil,
 					Source:             pt("wsl"),
 					Message:            "wsl: block should not end with a whitespace (or comment)",
+					RelatedInformation: nil,
+				},
+			},
+		},
+		{
+			name: "nested go.mod: file in root module uses root .golangci.yaml (wsl only)",
+			h: &langHandler{
+				logger:  newStdLogger(false),
+				command: command,
+				rootDir: mustAbs(t, "./testdata/nestedmod"),
+			},
+			filePath: "./testdata/nestedmod/main.go",
+			want: []Diagnostic{
+				{
+					Range: Range{
+						Start: Position{
+							Line:      8,
+							Character: 0,
+						},
+						End: Position{
+							Line:      8,
+							Character: 0,
+						},
+					},
+					Severity:           DSWarning,
+					Code:               nil,
+					Source:             pt("wsl"),
+					Message:            "wsl: block should not end with a whitespace (or comment)",
+					RelatedInformation: nil,
+				},
+			},
+		},
+		{
+			name: "nested go.mod: file in sub module uses sub .golangci.yaml (unused only)",
+			h: &langHandler{
+				logger:  newStdLogger(false),
+				command: command,
+				rootDir: mustAbs(t, "./testdata/nestedmod"),
+			},
+			filePath: "./testdata/nestedmod/sub/main.go",
+			want: []Diagnostic{
+				{
+					Range: Range{
+						Start: Position{
+							Line:      3,
+							Character: 4,
+						},
+						End: Position{
+							Line:      3,
+							Character: 4,
+						},
+					},
+					Severity:           DSWarning,
+					Code:               nil,
+					Source:             pt("unused"),
+					Message:            "unused: var foo is unused",
 					RelatedInformation: nil,
 				},
 			},
