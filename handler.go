@@ -74,17 +74,30 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	diagnostics := make([]Diagnostic, 0)
 
 	path := uriToPath(string(uri))
-	dir, file := filepath.Split(path)
+	dir, _ := filepath.Split(path)
 
 	moduleRoot := findModuleRoot(path, h.rootDir)
 
 	args := make([]string, 0, len(h.command))
 	args = append(args, h.command[1:]...)
+	hasAbsPathMode := false
+	for i, arg := range args {
+		if arg == "--path-mode=abs" {
+			hasAbsPathMode = true
+			break
+		}
+		if arg == "--path-mode" && i+1 < len(args) && args[i+1] == "abs" {
+			hasAbsPathMode = true
+			break
+		}
+	}
+	if !hasAbsPathMode {
+		args = append(args, "--path-mode=abs")
+	}
 	args = append(args, dir)
 	cmd := exec.Command(h.command[0], args...)
 	if strings.HasPrefix(path, moduleRoot) {
 		cmd.Dir = moduleRoot
-		file = path[len(moduleRoot)+1:]
 	} else {
 		cmd.Dir = dir
 	}
@@ -108,7 +121,8 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
 
 	for _, issue := range result.Issues {
-		if file != issue.Pos.Filename {
+		// golangci-lint is invoked with --path-mode=abs, so compare absolute paths.
+		if filepath.Clean(issue.Pos.Filename) != filepath.Clean(path) {
 			continue
 		}
 
