@@ -107,6 +107,8 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
 
+	var source = "golangci-lint"
+
 	for _, issue := range result.Issues {
 		if file != issue.Pos.Filename {
 			continue
@@ -124,7 +126,8 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 				},
 			},
 			Severity: issue.DiagSeverity(),
-			Source:   &issue.FromLinter,
+			Code:     &issue.FromLinter,
+			Source:   &source,
 			Message:  h.diagnosticMessage(&issue),
 		}
 		diagnostics = append(diagnostics, d)
