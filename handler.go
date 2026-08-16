@@ -185,6 +185,8 @@ func (h *langHandler) handle(ctx context.Context, conn *jsonrpc2.Conn, req *json
 		return h.handleTextDocumentDidChange(ctx, conn, req)
 	case "textDocument/didSave":
 		return h.handleTextDocumentDidSave(ctx, conn, req)
+	case "workspace/didChangeWatchedFiles":
+		return h.handleWorkspaceDidChangeWatchedFiles(ctx, conn, req)
 	case "workspace/didChangeConfiguration":
 		return h.handlerWorkspaceDidChangeConfiguration(ctx, conn, req)
 	}
@@ -246,6 +248,21 @@ func (h *langHandler) handleTextDocumentDidSave(_ context.Context, _ *jsonrpc2.C
 	}
 
 	h.request <- params.TextDocument.URI
+
+	return nil, nil
+}
+
+func (h *langHandler) handleWorkspaceDidChangeWatchedFiles(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (result any, err error) {
+	var params DidChangeWatchedFilesParams
+	if err := json.Unmarshal(*req.Params, &params); err != nil {
+		return nil, err
+	}
+
+	for _, change := range params.Changes {
+		if change.Type == FCTChanged {
+			h.request <- change.URI
+		}
+	}
 
 	return nil, nil
 }

@@ -66,6 +66,23 @@ type DidSaveTextDocumentParams struct {
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 }
 
+type DidChangeWatchedFilesParams struct {
+	Changes []FileEvent `json:"changes"`
+}
+
+type FileChangeType int
+
+const (
+	FCTCreated FileChangeType = iota + 1
+	FCTChanged
+	FCTDeleted
+)
+
+type FileEvent struct {
+	URI  DocumentURI    `json:"uri"`
+	Type FileChangeType `json:"type"`
+}
+
 type Location struct {
 	URI   string `json:"uri"`
 	Range Range  `json:"range"`

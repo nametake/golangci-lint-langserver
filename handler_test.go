@@ -1,11 +1,19 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/sourcegraph/jsonrpc2"
 )
 
 func pt(s string) *string {
@@ -19,6 +27,114 @@ func mustAbs(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return abs
+}
+
+func TestLangHandlerPublishesFreshDiagnosticsAfterWatchedFileChanges(t *testing.T) {
+	// Enable the subprocess-only behavior in TestLintCommandHelper.
+	t.Setenv("GO_WANT_LINT_HELPER", "1")
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "main.go")
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/stale\n\ngo 1.23\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filePath, []byte("package main\n\n// lint-error\nfunc main() {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	serverStream, clientStream := net.Pipe()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	diagnostics := make(chan PublishDiagnosticsParams, 2)
+	clientHandler := jsonrpc2.HandlerWithError(func(_ context.Context, _ *jsonrpc2.Conn, req *jsonrpc2.Request) (any, error) {
+		if req.Method != "textDocument/publishDiagnostics" {
+			return nil, nil
+		}
+		var params PublishDiagnosticsParams
+		if err := json.Unmarshal(*req.Params, &params); err != nil {
+			return nil, err
+		}
+		diagnostics <- params
+		return nil, nil
+	})
+
+	serverConn := jsonrpc2.NewConn(ctx, jsonrpc2.NewBufferedStream(serverStream, jsonrpc2.VSCodeObjectCodec{}), NewHandler(newStdLogger(false), false))
+	clientConn := jsonrpc2.NewConn(ctx, jsonrpc2.NewBufferedStream(clientStream, jsonrpc2.VSCodeObjectCodec{}), clientHandler)
+	defer serverConn.Close()
+	defer clientConn.Close()
+
+	var initialized InitializeResult
+	if err := clientConn.Call(ctx, "initialize", InitializeParams{
+		RootURI: "file://" + dir,
+		InitializationOptions: InitializationOptions{
+			Command: []string{os.Args[0], "-test.run=TestLintCommandHelper", "--"},
+		},
+	}, &initialized); err != nil {
+		t.Fatal(err)
+	}
+	if initialized.Capabilities.TextDocumentSync.Change != TDSKNone {
+		t.Fatalf("text document sync kind = %d, want none", initialized.Capabilities.TextDocumentSync.Change)
+	}
+
+	uri := DocumentURI("file://" + filePath)
+	if err := clientConn.Notify(ctx, "textDocument/didOpen", DidOpenTextDocumentParams{
+		TextDocument: TextDocumentItem{URI: uri, LanguageID: "go", Version: 0},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-diagnostics:
+		if len(got.Diagnostics) != 1 {
+			t.Fatalf("initial diagnostics count = %d, want 1", len(got.Diagnostics))
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for initial diagnostics")
+	}
+
+	updated := "package main\n\nfunc main() {}\n"
+	if err := os.WriteFile(filePath, []byte(updated), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := clientConn.Notify(ctx, "workspace/didChangeWatchedFiles", map[string]any{
+		"changes": []map[string]any{{"uri": uri, "type": 2}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := clientConn.Notify(ctx, "textDocument/didChange", map[string]any{
+		"textDocument":   map[string]any{"uri": uri, "version": 1},
+		"contentChanges": []map[string]any{{"text": updated}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case got := <-diagnostics:
+		if len(got.Diagnostics) != 0 {
+			t.Fatalf("updated diagnostics count = %d, want 0", len(got.Diagnostics))
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for updated diagnostics")
+	}
+}
+
+func TestLintCommandHelper(t *testing.T) {
+	if os.Getenv("GO_WANT_LINT_HELPER") != "1" {
+		return
+	}
+
+	dir := os.Args[len(os.Args)-1]
+	contents, err := os.ReadFile(filepath.Join(dir, "main.go"))
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(2)
+	}
+	if !strings.Contains(string(contents), "lint-error") {
+		os.Exit(0)
+	}
+
+	fmt.Fprint(os.Stdout, `{"Issues":[{"FromLinter":"test","Text":"stale diagnostic","Pos":{"Filename":"main.go","Line":3,"Column":1}}]}`)
+	os.Exit(1)
 }
 
 func TestLangHandler_lint_Integration(t *testing.T) {
