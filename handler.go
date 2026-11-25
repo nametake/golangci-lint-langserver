@@ -29,6 +29,13 @@ type langHandler struct {
 	request      chan DocumentURI
 	command      []string
 	noLinterName bool
+	lintPackage  bool
+
+	// published tracks, per package directory, the documents (path -> URI)
+	// that currently have non-empty diagnostics published, so they can be
+	// cleared once their issues are fixed. Only accessed from the linter
+	// goroutine.
+	published map[string]map[string]DocumentURI
 
 	rootURI string
 	rootDir string
@@ -70,8 +77,23 @@ func (h *langHandler) errToDiagnostics(err error) []Diagnostic {
 	}
 }
 
+// lint returns the diagnostics for the given document only.
 func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
+	files, err := h.lintFiles(uri)
+	if err != nil {
+		return nil, err
+	}
+
+	return files[uri], nil
+}
+
+// lintFiles runs golangci-lint on the package (directory) of the given
+// document. The result always contains an entry for uri. If lintPackage is
+// enabled, it also contains entries for the other files of the package that
+// have issues.
+func (h *langHandler) lintFiles(uri DocumentURI) (map[DocumentURI][]Diagnostic, error) {
 	diagnostics := make([]Diagnostic, 0)
+	files := map[DocumentURI][]Diagnostic{uri: diagnostics}
 
 	path := uriToPath(string(uri))
 	dir, file := filepath.Split(path)
@@ -93,23 +115,45 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 
 	b, err := cmd.Output()
 	if err == nil {
-		return diagnostics, nil
+		return files, nil
 	} else if len(b) == 0 {
 		// golangci-lint would output critical error to stderr rather than stdout
 		// https://github.com/nametake/golangci-lint-langserver/issues/24
-		return h.errToDiagnostics(err), nil
+		files[uri] = h.errToDiagnostics(err)
+
+		return files, nil
 	}
 
 	var result GolangCILintResult
 	if err := json.Unmarshal(b, &result); err != nil {
-		return h.errToDiagnostics(err), nil
+		files[uri] = h.errToDiagnostics(err)
+
+		return files, nil
 	}
 
 	h.logger.DebugJSON("golangci-lint-langserver: result:", result)
 
+	pkgDir := filepath.Clean(dir)
+
 	for _, issue := range result.Issues {
+		issueURI := uri
 		if file != issue.Pos.Filename {
-			continue
+			if !h.lintPackage {
+				continue
+			}
+
+			// Issue filenames are relative to the directory golangci-lint was run in.
+			issuePath := issue.Pos.Filename
+			if !filepath.IsAbs(issuePath) {
+				issuePath = filepath.Join(cmd.Dir, issuePath)
+			}
+
+			// Only report files of the linted package, not of other directories.
+			if filepath.Dir(issuePath) != pkgDir {
+				continue
+			}
+
+			issueURI = pathToURI(issuePath)
 		}
 
 		d := Diagnostic{
@@ -127,10 +171,54 @@ func (h *langHandler) lint(uri DocumentURI) ([]Diagnostic, error) {
 			Source:   &issue.FromLinter,
 			Message:  h.diagnosticMessage(&issue),
 		}
-		diagnostics = append(diagnostics, d)
+		files[issueURI] = append(files[issueURI], d)
 	}
 
-	return diagnostics, nil
+	return files, nil
+}
+
+// publishParams builds the publishDiagnostics notifications for a lint run of
+// the package containing uri. Documents of that package which had diagnostics
+// published by a previous run but have none now are cleared.
+func (h *langHandler) publishParams(uri DocumentURI, files map[DocumentURI][]Diagnostic) []PublishDiagnosticsParams {
+	params := make([]PublishDiagnosticsParams, 0, len(files))
+
+	if h.lintPackage {
+		if h.published == nil {
+			h.published = make(map[string]map[string]DocumentURI)
+		}
+
+		pkgDir := filepath.Dir(uriToPath(string(uri)))
+
+		// Files are compared by path, as the client and pathToURI may encode
+		// the URI of the same file differently.
+		current := make(map[string]DocumentURI, len(files))
+		for u, diagnostics := range files {
+			if len(diagnostics) > 0 {
+				current[uriToPath(string(u))] = u
+			}
+		}
+
+		inResult := make(map[string]struct{}, len(files))
+		for u := range files {
+			inResult[uriToPath(string(u))] = struct{}{}
+		}
+
+		// Clear stale diagnostics first, so they never override fresh ones.
+		for path, u := range h.published[pkgDir] {
+			if _, ok := inResult[path]; !ok {
+				params = append(params, PublishDiagnosticsParams{URI: u, Diagnostics: []Diagnostic{}})
+			}
+		}
+
+		h.published[pkgDir] = current
+	}
+
+	for u, diagnostics := range files {
+		params = append(params, PublishDiagnosticsParams{URI: u, Diagnostics: diagnostics})
+	}
+
+	return params
 }
 
 func (h *langHandler) diagnosticMessage(issue *Issue) string {
@@ -148,21 +236,21 @@ func (h *langHandler) linter() {
 			break
 		}
 
-		diagnostics, err := h.lint(uri)
+		files, err := h.lintFiles(uri)
 		if err != nil {
 			h.logger.Printf("%s\n", err)
 
 			continue
 		}
 
-		if err := h.conn.Notify(
-			context.Background(),
-			"textDocument/publishDiagnostics",
-			&PublishDiagnosticsParams{
-				URI:         uri,
-				Diagnostics: diagnostics,
-			}); err != nil {
-			h.logger.Printf("%s\n", err)
+		for _, params := range h.publishParams(uri, files) {
+			if err := h.conn.Notify(
+				context.Background(),
+				"textDocument/publishDiagnostics",
+				&params,
+			); err != nil {
+				h.logger.Printf("%s\n", err)
+			}
 		}
 	}
 }
@@ -202,6 +290,7 @@ func (h *langHandler) handleInitialize(_ context.Context, conn *jsonrpc2.Conn, r
 	h.rootDir = uriToPath(params.RootURI)
 	h.conn = conn
 	h.command = params.InitializationOptions.Command
+	h.lintPackage = params.InitializationOptions.LintPackage
 
 	return InitializeResult{
 		Capabilities: ServerCapabilities{

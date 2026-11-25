@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func pt(s string) *string {
@@ -321,5 +322,148 @@ func TestLangHandler_lint_Integration(t *testing.T) {
 				t.Errorf("lint() mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func unusedDiagnostic(name string) Diagnostic {
+	return Diagnostic{
+		Range: Range{
+			Start: Position{Line: 3, Character: 4},
+			End:   Position{Line: 3, Character: 4},
+		},
+		Severity: DSWarning,
+		Source:   pt("unused"),
+		Message:  "unused: var " + name + " is unused",
+	}
+}
+
+func TestLangHandler_lintFiles_Integration(t *testing.T) {
+	if _, err := exec.LookPath("golangci-lint"); err != nil {
+		t.Fatal("golangci-lint is not installed in this environment")
+	}
+
+	command := []string{"golangci-lint", "run", "--output.json.path", "stdout", "--issues-exit-code=1", "--show-stats=false"}
+
+	mainURI := DocumentURI("file://" + mustAbs(t, "./testdata/lintpackage/main.go"))
+	barURI := pathToURI(mustAbs(t, "./testdata/lintpackage/bar.go"))
+
+	tests := []struct {
+		name        string
+		lintPackage bool
+		want        map[DocumentURI][]Diagnostic
+	}{
+		{
+			name:        "lintPackage disabled: only the linted file",
+			lintPackage: false,
+			want: map[DocumentURI][]Diagnostic{
+				mainURI: {unusedDiagnostic("foo")},
+			},
+		},
+		{
+			name:        "lintPackage enabled: all files of the package, not sub packages",
+			lintPackage: true,
+			want: map[DocumentURI][]Diagnostic{
+				mainURI: {unusedDiagnostic("foo")},
+				barURI:  {unusedDiagnostic("bar")},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := &langHandler{
+				logger:      newStdLogger(false),
+				command:     command,
+				rootDir:     mustAbs(t, "./testdata/lintpackage"),
+				lintPackage: tt.lintPackage,
+			}
+
+			files, err := h.lintFiles(mainURI)
+			if err != nil {
+				t.Fatalf("lintFiles() returned unexpected error: %v", err)
+			}
+			if diff := cmp.Diff(tt.want, files); diff != "" {
+				t.Errorf("lintFiles() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestLangHandler_publishParams(t *testing.T) {
+	sortParams := cmpopts.SortSlices(func(a, b PublishDiagnosticsParams) bool { return a.URI < b.URI })
+
+	mainURI := DocumentURI("file:///project/pkg/main.go")
+	barURI := DocumentURI("file:///project/pkg/bar.go")
+	otherURI := DocumentURI("file:///project/other/other.go")
+
+	t.Run("lintPackage disabled publishes the result as is", func(t *testing.T) {
+		h := &langHandler{}
+
+		got := h.publishParams(mainURI, map[DocumentURI][]Diagnostic{mainURI: {}})
+		want := []PublishDiagnosticsParams{{URI: mainURI, Diagnostics: []Diagnostic{}}}
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("publishParams() mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("lintPackage enabled clears fixed files of the same package only", func(t *testing.T) {
+		h := &langHandler{lintPackage: true}
+
+		// First run: bar.go has an issue.
+		h.publishParams(mainURI, map[DocumentURI][]Diagnostic{
+			mainURI: {},
+			barURI:  {unusedDiagnostic("bar")},
+		})
+		// Other package has an issue too.
+		h.publishParams(otherURI, map[DocumentURI][]Diagnostic{
+			otherURI: {unusedDiagnostic("other")},
+		})
+
+		// Second run: bar.go got fixed.
+		got := h.publishParams(mainURI, map[DocumentURI][]Diagnostic{mainURI: {}})
+		want := []PublishDiagnosticsParams{
+			{URI: barURI, Diagnostics: []Diagnostic{}},
+			{URI: mainURI, Diagnostics: []Diagnostic{}},
+		}
+
+		if diff := cmp.Diff(want, got, sortParams); diff != "" {
+			t.Errorf("publishParams() mismatch (-want +got):\n%s", diff)
+		}
+
+		// Third run: nothing left to clear.
+		got = h.publishParams(mainURI, map[DocumentURI][]Diagnostic{mainURI: {}})
+		want = []PublishDiagnosticsParams{{URI: mainURI, Diagnostics: []Diagnostic{}}}
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("publishParams() mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("lintPackage enabled matches files by path, not URI encoding", func(t *testing.T) {
+		h := &langHandler{lintPackage: true}
+
+		encoded := DocumentURI("file:///project/my%20pkg/bar.go")
+		decoded := DocumentURI("file:///project/my pkg/bar.go")
+		main := DocumentURI("file:///project/my%20pkg/main.go")
+
+		h.publishParams(main, map[DocumentURI][]Diagnostic{encoded: {unusedDiagnostic("bar")}})
+
+		// Same file reported under a differently encoded URI must not be cleared.
+		got := h.publishParams(main, map[DocumentURI][]Diagnostic{decoded: {unusedDiagnostic("bar")}})
+		want := []PublishDiagnosticsParams{{URI: decoded, Diagnostics: []Diagnostic{unusedDiagnostic("bar")}}}
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("publishParams() mismatch (-want +got):\n%s", diff)
+		}
+	})
+}
+
+func TestPathToURI(t *testing.T) {
+	path := mustAbs(t, "./testdata/my dir/main.go")
+
+	uri := pathToURI(path)
+	if got := uriToPath(string(uri)); got != path {
+		t.Errorf("uriToPath(pathToURI(%q)) = %q", path, got)
 	}
 }
