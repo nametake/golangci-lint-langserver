@@ -26,6 +26,20 @@ go install github.com/nametake/golangci-lint-langserver@latest
 
 You need to set golangci-lint command to initializationOptions with `--out-format json`.
 
+### Initialization options
+
+| Option        | Type       | Default | Description |
+| ------------- | ---------- | ------- | ----------- |
+| `command`     | `string[]` |         | The golangci-lint command to run. Required. |
+| `lintPackage` | `bool`     | `false` | Publish diagnostics for all files in the package (directory) of the opened or saved file, instead of only for that file. Diagnostics of files whose issues were fixed are cleared on the next run. |
+
+```jsonc
+"initializationOptions": {
+  "command": ["golangci-lint", "run", "--output.json.path", "stdout", "--show-stats=false", "--issues-exit-code=1"],
+  "lintPackage": true
+}
+```
+
 ### Configuration for [coc.nvim](https://github.com/neoclide/coc.nvim)
 
 coc-settings.json

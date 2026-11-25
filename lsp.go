@@ -9,6 +9,9 @@ type InitializeParams struct {
 
 type InitializationOptions struct {
 	Command []string
+	// LintPackage publishes diagnostics for every file in the package
+	// (directory) of the opened or saved file, not only for that file.
+	LintPackage bool `json:"lintPackage,omitempty"`
 }
 
 type InitializeResult struct {
